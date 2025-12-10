@@ -123,11 +123,9 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
       have := @Nat.setOf_prime_and_eq_mod_infinite;
       specialize @this ( 4 * m ) ?_ ( a : ZMod ( 4 * m ) ) ?_ <;>
       simp_all only [Int.reduceNeg, neg_mul]
-      obtain ⟨left, right⟩ := ha
-      obtain ⟨left_1, right⟩ := right
       · exact ⟨ by aesop_cat ⟩;
-      · --exact (ZMod.isUnit_iff_coprime a (4 * m)).mpr right;
-        sorry
+      · obtain ⟨left, middle, right⟩ := ha
+        exact (ZMod.isUnit_iff_coprime a (4 * m)).mpr right;
       · convert this using 1;
         norm_num [ ← ZMod.natCast_eq_natCast_iff' ];
     cases' h_dirichlet.exists_gt ( 4 * m ) with q hq ; use q ;
