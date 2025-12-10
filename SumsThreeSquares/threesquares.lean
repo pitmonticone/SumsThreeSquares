@@ -425,12 +425,24 @@ lemma exists_lattice_point_in_ball (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 
   have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
     unfold S_pre
     rw [vol_preimage_ball_mapM m q t b hm hq]
-    have : m ≥ 1 := by sorry
     norm_num
     ring_nf
     -- Need to show: 8 < (4/3) * π * (2m)^(3/2) / (m√m)
-    -- This simplifies to showing the inequality holds for m ≥ 1
-    sorry
+    field_simp
+    ring_nf
+    have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
+
+      sorry
+    rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀];
+    · rw [← pow_lt_pow_iff_left₀ (n := 2)]
+      · norm_num1
+        rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
+        nlinarith [Real.pi_gt_d4]
+      · simp
+      · positivity
+      · positivity
+    all_goals positivity
+
 
 
   -- Step 4: Apply Minkowski's theorem
