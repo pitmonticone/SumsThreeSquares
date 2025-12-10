@@ -150,7 +150,7 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
 /-
 If $m \equiv 3 \pmod 8$ is squarefree, $q \equiv 1 \pmod 4$ is prime, and $(-2q/p) = 1$ for all $p|m$, then $(-m/q) = 1$.
 -/
-lemma jacobi_neg_m_q (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q) (hq_mod : q % 4 = 1)
+lemma jacobi_neg_m_q (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q) (hq_mod : q % 4 = 1)
     (h_jacobi : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1) :
     jacobiSym (-m) q = 1 := by
   -- We need to show that $(q/m) = (-2/m)$.
@@ -236,11 +236,18 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
             apply Odd.of_dvd_nat _ left_1
             rw [Nat.odd_iff]
             omega
-          · rw [ Nat.coprime_primes ] <;> aesop;
+          · rw [ Nat.coprime_primes ] <;>
+            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast]
+            obtain ⟨left, right⟩ := hp
+            obtain ⟨left_1, right⟩ := right
+            apply Aesop.BuiltinRules.not_intro
+            intro a
+            subst a
+            simp_all only
             have := h_jacobi q left_1 left; rw [ jacobiSym.mod_left ] at this; norm_num at this;
             rw [ jacobiSym.zero_left ] at this ; aesop;
             exact left.one_lt;
-        exact?;
+        exact Int.mod_coprime h_inv;
       use t * inv_2q;
       convert ht.mul_left ( 2 * q * inv_2q ^ 2 ) |> Int.ModEq.trans <| ?_ using 1 <;> ring_nf;
       convert hinv_2q.pow 2 |> Int.ModEq.neg using 1 ; ring;
@@ -251,7 +258,11 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
       obtain ⟨y_p, hy_p⟩ : ∃ y_p : ℤ, y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) ≡ 1 [ZMOD p] := by
         have h_coprime : Nat.gcd p (∏ q ∈ m.primeFactors \ {p}, q) = 1 := by
           exact Nat.Coprime.prod_right fun q hq => by have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors hp ) ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hq |>.1 ) ) ; aesop;
-        have := Nat.gcd_eq_gcd_ab p ( ∏ q ∈ m.primeFactors \ { p }, q ) ; aesop;
+        have := Nat.gcd_eq_gcd_ab p ( ∏ q ∈ m.primeFactors \ { p }, q )
+        simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, and_imp, Nat.cast_one, Nat.cast_prod,
+          not_false_eq_true, neg_add_rev, forall_const, implies_true]
+        obtain ⟨left, right⟩ := hp
+        obtain ⟨left_1, right⟩ := right
         exact ⟨ Nat.gcdB p ( ∏ q ∈ m.primeFactors \ { p }, q ), by rw [ Int.modEq_iff_dvd ] ; use Nat.gcdA p ( ∏ q ∈ m.primeFactors \ { p }, q ) ; linarith ⟩;
       use y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) * t p;
       exact ⟨ by simpa using hy_p.mul_right _, fun q hq hqp => Int.modEq_zero_iff_dvd.mpr <| dvd_mul_of_dvd_left ( dvd_mul_of_dvd_right ( Finset.dvd_prod_of_mem _ <| by aesop ) _ ) _ ⟩;
@@ -307,7 +318,8 @@ lemma vol_preimage_ball_euclidean (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 <
   -- The volume of the preimage is $\text{vol}(B(0, \sqrt{2m})) / |\det M|$.
   have h_volume : (MeasureTheory.volume ((⇑(linear_map_M_euclidean m q t b)) ⁻¹' (Metric.ball 0 (Real.sqrt (2 * ↑m))))) = (MeasureTheory.volume (Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * ↑m)))) / ENNReal.ofReal (abs (LinearMap.det (linear_map_M_euclidean m q t b))) := by
     have h_volume_image : ∀ {L : (EuclideanSpace ℝ (Fin 3)) →ₗ[ℝ] (EuclideanSpace ℝ (Fin 3))}, LinearMap.det L ≠ 0 → ∀ {E : Set (EuclideanSpace ℝ (Fin 3))}, MeasurableSet E → MeasureTheory.volume (L ⁻¹' E) = MeasureTheory.volume E / ENNReal.ofReal (abs (LinearMap.det L)) := by
-      intro L hL E hE; rw [ div_eq_mul_inv ] ; rw [ MeasureTheory.Measure.addHaar_preimage_linearMap ] ; aesop;
+      intro L hL E hE; rw [ div_eq_mul_inv ] ; rw [ MeasureTheory.Measure.addHaar_preimage_linearMap ]
+      simp_all only [ne_eq, abs_inv, abs_pos, not_false_eq_true, ENNReal.ofReal_inv_of_pos]
       · ring;
       · assumption;
     apply h_volume_image; exact (by
