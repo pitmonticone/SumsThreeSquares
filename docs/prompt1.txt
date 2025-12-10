@@ -1,0 +1,15 @@
+Can you give a self-contained proof of Legendre's three-square theorem?
+
+I would like it in the traditional definition/theorem/proof style.  I don't want any motivation, but I do want clear exposition.  State but do not prove these three facts:
+1.    the quadratic reciprocity law,
+2.    Dirichlet's theorem on arithmetic progressions, and
+3.    the equivalence class of the trivial ternary quadratic form.
+DO prove how they come together to prove the main result.
+
+Write the proof in Latex, beginning with \documentclass{amsart} and ending with \end{document}.
+
+[Thought for 52m 33s]
+
+Can you put that all in a code block?
+
+[Thought for 5m 31s]
