@@ -446,9 +446,10 @@ lemma exists_lattice_point_in_ball (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 
 
 
 
-  -- Step 4: Apply Minkowski's theorem
-  -- BLOCKER: Type mismatch - Minkowski expects (Fin 3 → ℝ) but we have EuclideanSpace ℝ (Fin 3)
-  -- Need explicit coercion or reformulation
+  let E := EuclideanSpace ℝ (Fin 3)
+  -- define s as the volume bounded by x^2 + y^2 + z^3 ≤ 2*m
+  let s : Set E := {v | ‖v‖^2 < 2 * m}
+
   sorry/-
 Step 2: From equation (9), we have R₁² + S₁² + T₁² ≡ 0 (mod m).
 This follows from the choice of t satisfying t² ≡ -1/(2q) (mod m).

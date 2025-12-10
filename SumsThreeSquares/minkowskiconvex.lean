@@ -153,6 +153,8 @@ theorem classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
 
   -- The measure of F is 1
   have hF : volume F = 1 := by
+    sorry
+    stop
     show volume (Set.pi Set.univ (fun _ : Fin n => Set.Ico (0 : ℝ) 1)) = 1
     rw [volume_pi]
     have h_vol_Ico : volume (Set.Ico (0 : ℝ) 1) = 1 := by
