@@ -230,8 +230,12 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
       obtain ⟨inv_2q, hinv_2q⟩ : ∃ inv_2q : ℤ, 2 * q * inv_2q ≡ 1 [ZMOD p] := by
         have h_inv : Int.gcd (2 * q : ℤ) p = 1 := by
           refine' Nat.Coprime.mul_left _ _;
-          · aesop;
-            exact left.odd_of_ne_two <| by rintro rfl; have := Nat.mod_eq_zero_of_dvd left_1; omega;
+          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast, Nat.coprime_two_left]
+            obtain ⟨left, right⟩ := hp
+            obtain ⟨left_1, right⟩ := right
+            apply Odd.of_dvd_nat _ left_1
+            rw [Nat.odd_iff]
+            omega
           · rw [ Nat.coprime_primes ] <;> aesop;
             have := h_jacobi q left_1 left; rw [ jacobiSym.mod_left ] at this; norm_num at this;
             rw [ jacobiSym.zero_left ] at this ; aesop;
