@@ -5,14 +5,14 @@ import Mathlib.MeasureTheory.Group.GeometryOfNumbers
 open MeasureTheory Module Submodule
 
 variable {n : ℕ}
-variable {s : Set (Fin n → ℝ)}
+variable {s : Set (EuclideanSpace ℝ (Fin n))}
 
 theorem classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
     (h_symm : ∀ x ∈ s, -x ∈ s) (h_conv : Convex ℝ s) (h : 2 ^ n < volume s) :
     ∃ x ≠ 0, (x ∈ s) ∧ (∀ i : Fin n, (∃ (m : ℤ), m = x i)) := by
 
   -- Set up the type E = ℝ^n
-  let E := Fin n → ℝ
+  let E := EuclideanSpace ℝ (Fin n)
 
   -- The integer lattice ℤ^n as an AddSubgroup of ℝ^n
   -- Define it as the set of points with integer coordinates
@@ -80,11 +80,16 @@ theorem classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
           calc (1 : ℝ) ≤ |(m : ℝ)| := by exact_mod_cast Int.one_le_abs hm_ne
             _ = |x i| := by rw [← hm]
         have : (1 : ℝ) ≤ ‖x‖ := by
-          rw [Pi.norm_def]
-          simp
-          use i
-          apply le_trans this
-          simp
+
+          rw [EuclideanSpace.norm_eq]
+          apply Real.le_sqrt_of_sq_le
+          grw [← Finset.single_le_sum (a := i)]
+          · rw [sq_le_sq]
+            simp
+            exact this
+          · intros
+            positivity
+          · simp
         linarith
     rw [eq]
     exact IsOpen.preimage continuous_subtype_val hU_open
