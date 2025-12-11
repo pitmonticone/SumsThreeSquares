@@ -396,13 +396,8 @@ NOTE: This lemma is partially filled using the Minkowski theorem from minkowskic
 The remaining work is to properly set up the linear transformation and apply it correctly.
 The ball should be defined in the (R,S,T) coordinate system, not (x,y,z).
 -/
-lemma exists_lattice_point_in_ball (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
-    ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
-    let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
-    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
-    let T := Real.sqrt m / Real.sqrt (2 * q) * y
-    R^2 + S^2 + T^2 < 2 * m := by
-  -- Define the ball B in (R,S,T) space
+
+lemma exists_lattice_point_in_ball (m : ℕ) : ∃ (R S T : ℤ), (R, S, T) ≠ (0, 0, 0) ∧ R^2 + S^2 + T^2 < 2 * m := by
   let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
   -- Define the preimage S under the linear map M
   let S_pre := (mapM m q t b) ⁻¹' B
@@ -446,9 +441,39 @@ lemma exists_lattice_point_in_ball (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 
 
 
 
-  -- Step 4: Apply Minkowski's theorem
-  -- BLOCKER: Type mismatch - Minkowski expects (Fin 3 → ℝ) but we have EuclideanSpace ℝ (Fin 3)
-  -- Need explicit coercion or reformulation
+
+
+  let E := EuclideanSpace ℝ (Fin 3)
+  -- define s as the volume bounded by x^2 + y^2 + z^3 ≤ 2*m
+  --We need
+  ---h_symm, h_conv, h
+  --let s : Set E := {X | ‖X‖^2 < 2 * m}
+  have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
+  obtain ⟨x, hx0, hxs, h⟩ := this
+  have hcoor0 := h 0
+  have hcoor1 := h 1
+  have hcoor2 := h 2
+  obtain ⟨R, hr⟩ := hcoor0
+  obtain ⟨S, hs⟩ := hcoor1
+  obtain ⟨T, ht⟩ := hcoor2
+  use R, S, T
+  constructor
+  · sorry
+  · --simp [R_1, S_1, T_1]
+
+  sorry
+
+lemma exists_lattic_xyz (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
+    ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
+    let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
+    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
+    let T := Real.sqrt m / Real.sqrt (2 * q) * y
+    R^2 + S^2 + T^2 < 2 * m := by
+  -- Define the ball B in (R,S,T) space
+
+
+
+
   sorry/-
 Step 2: From equation (9), we have R₁² + S₁² + T₁² ≡ 0 (mod m).
 This follows from the choice of t satisfying t² ≡ -1/(2q) (mod m).
@@ -644,6 +669,7 @@ theorem three_squares_case_3_mod_8 (m : ℕ) (hm : 0 < m) (hm_sq : Squarefree m)
 Outline for other cases m ≡ 1, 2, 5, 6 (mod 8).
 The proof follows a similar structure with minor modifications as indicated in Section 2 of content.tex.
 -/
+/-
 theorem three_squares_other_cases (m : ℕ) (hm : 0 < m) (hm_sq : Squarefree m)
     (hm_mod : m % 8 = 1 ∨ m % 8 = 2 ∨ m % 8 = 5 ∨ m % 8 = 6) :
     IsSumOfThreeSquares m := by
@@ -690,3 +716,4 @@ theorem sum_three_squares (m : ℕ) (hm : 0 < m)
 
   -- Step 3: If m' = a² + b² + c², then m = 4^k·m' = (2^k·a)² + (2^k·b)² + (2^k·c)²
   sorry
+-/
