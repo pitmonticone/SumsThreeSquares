@@ -391,90 +391,103 @@ The remaining work is to properly set up the linear transformation and apply it 
 The ball should be defined in the (R,S,T) coordinate system, not (x,y,z).
 -/
 
-lemma exists_lattic_xyz (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
+lemma exists_lattice_xyz (m q : ℕ) (t b : ℤ) (h : ℤ) (hm : 0 < m) (hq : 0 < q) (hbqm : b ^ 2 - 4 * q * h = -m) :
     ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
     let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
     let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
     let T := Real.sqrt m / Real.sqrt (2 * q) * y
+    R^2 + S^2 + T^2 = m := by
+
+  have : ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
+    let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
+    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
+    let T := Real.sqrt m / Real.sqrt (2 * q) * y
     R^2 + S^2 + T^2 < 2 * m := by
-  let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
-  -- Define the preimage S under the linear map M
-  let S_pre := (mapM m q t b) ⁻¹' B
+      let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
+      -- Define the preimage S under the linear map M
+      let S_pre := (mapM m q t b) ⁻¹' B
 
-  -- Step 1: Show S_pre is symmetric
-  have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := by
-    intro x hx
-    unfold S_pre B at hx ⊢
-    simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right] at hx ⊢
-    rw [map_neg, norm_neg]
-    exact hx
+      -- Step 1: Show S_pre is symmetric
+      have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := by
+        intro x hx
+        unfold S_pre B at hx ⊢
+        simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right] at hx ⊢
+        rw [map_neg, norm_neg]
+        exact hx
 
-  -- Step 2: Show S_pre is convex
-  have h_conv : Convex ℝ S_pre := by
-    unfold S_pre
-    apply Convex.linear_preimage
-    exact convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
+      -- Step 2: Show S_pre is convex
+      have h_conv : Convex ℝ S_pre := by
+        unfold S_pre
+        apply Convex.linear_preimage
+        exact convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
 
-  -- Step 3: Show the volume condition 2³ < volume(S_pre)
-  have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
-    unfold S_pre
-    rw [vol_preimage_ball_mapM m q t b hm hq]
-    norm_num
-    ring_nf
-    -- Need to show: 8 < (4/3) * π * (2m)^(3/2) / (m√m)
-    field_simp
-    ring_nf
-    have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
-      rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3  : ℝ) = 2 + 1), Real.rpow_add]
-      simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
-      all_goals positivity
-    rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀];
-    · rw [← pow_lt_pow_iff_left₀ (n := 2)]
-      · norm_num1
-        rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
-        nlinarith [Real.pi_gt_d4]
-      · simp
-      · positivity
-      · positivity
-    all_goals positivity
-
-
+      -- Step 3: Show the volume condition 2³ < volume(S_pre)
+      have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
+        unfold S_pre
+        rw [vol_preimage_ball_mapM m q t b hm hq]
+        norm_num
+        ring_nf
+        -- Need to show: 8 < (4/3) * π * (2m)^(3/2) / (m√m)
+        field_simp
+        ring_nf
+        have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
+          rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3  : ℝ) = 2 + 1), Real.rpow_add]
+          simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
+          all_goals positivity
+        rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀];
+        · rw [← pow_lt_pow_iff_left₀ (n := 2)]
+          · norm_num1
+            rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
+            nlinarith [Real.pi_gt_d4]
+          · simp
+          · positivity
+          · positivity
+        all_goals positivity
 
 
 
-  let E := EuclideanSpace ℝ (Fin 3)
-  -- define s as the volume bounded by x^2 + y^2 + z^3 ≤ 2*m
-  --We need
-  ---h_symm, h_conv, h
-  --let s : Set E := {X | ‖X‖^2 < 2 * m}
-  have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
-  obtain ⟨x, hx0, hxs, h⟩ := this
-  have hcoor0 := h 0
-  have hcoor1 := h 1
-  have hcoor2 := h 2
-  obtain ⟨R, hr⟩ := hcoor0
-  obtain ⟨S, hs⟩ := hcoor1
-  obtain ⟨T, ht⟩ := hcoor2
-  use R, S, T
-  constructor
-  · contrapose! hx0; ext i; fin_cases i <;> aesop
-  · convert ( show ( ‖mapM m q t b x‖ ^ 2 : ℝ ) < 2 * m from ?_ ) using 1 <;> norm_num [ EuclideanSpace.norm_eq, Fin.sum_univ_three ] ; ring_nf ;
-    simp_all only [Nat.ofNat_nonneg, Real.sqrt_mul, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg,
-      norm_neg, implies_true, ne_eq, Fin.isValue, Real.sq_sqrt, Nat.cast_nonneg, inv_pow, S_pre, B]
-    · -- By definition of matrix multiplication and the properties of the Euclidean norm, we can expand the right-hand side.
-      have h_expand : (mapM m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧ (mapM m q t b x) 1 = Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧ (mapM m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
-        unfold mapM; norm_num [ Fin.sum_univ_three ] ; ring_nf;
-        erw [ Matrix.toLin'_apply ] ; ring_nf ;
-        simp_all (config := { decide := true }) only [Fin.isValue]
-        apply And.intro
-        · norm_num [ Matrix.mulVec ] ; ring_nf!;
-        · apply And.intro
-          · simp [Matrix.mulVec];
-            ring!;
-          · simp ( config := { decide := Bool.true } ) [ Matrix.mulVec] ; ring_nf ; aesop ( simp_config := { decide := Bool.true } ) ;
-      rw [ Real.sq_sqrt <| by positivity ] ; rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ] ; ring_nf ; norm_num [ ne_of_gt, hq, hm ] ; ring_nf;
-      norm_num [ hq.ne', hm.ne' ] ; ring;
-    · simp +zetaDelta at *;
-      rw [ EuclideanSpace.norm_eq ] at hxs ;
-      simp_all only [Fin.isValue, Real.norm_eq_abs, sq_abs]
-      rw [ Real.sq_sqrt <| by positivity ] ; rw [ ← Real.sqrt_mul <| by positivity ] at * ; rw [ Real.sqrt_lt_sqrt_iff <| by positivity ] at * ; norm_num [ Fin.sum_univ_three ] at * ; linarith!;
+
+
+      let E := EuclideanSpace ℝ (Fin 3)
+      -- define s as the volume bounded by x^2 + y^2 + z^3 ≤ 2*m
+      --We need
+      ---h_symm, h_conv, h
+      --let s : Set E := {X | ‖X‖^2 < 2 * m}
+      have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
+      obtain ⟨x, hx0, hxs, h⟩ := this
+      have hcoor0 := h 0
+      have hcoor1 := h 1
+      have hcoor2 := h 2
+      obtain ⟨R, hr⟩ := hcoor0
+      obtain ⟨S, hs⟩ := hcoor1
+      obtain ⟨T, ht⟩ := hcoor2
+      use R, S, T
+      constructor
+      · contrapose! hx0; ext i; fin_cases i <;> aesop
+      · convert ( show ( ‖mapM m q t b x‖ ^ 2 : ℝ ) < 2 * m from ?_ ) using 1 <;> norm_num [ EuclideanSpace.norm_eq, Fin.sum_univ_three ] ; ring_nf ;
+        simp_all only [Nat.ofNat_nonneg, Real.sqrt_mul, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg,
+          norm_neg, implies_true, ne_eq, Fin.isValue, Real.sq_sqrt, Nat.cast_nonneg, inv_pow, S_pre, B]
+        · -- By definition of matrix multiplication and the properties of the Euclidean norm, we can expand the right-hand side.
+          have h_expand : (mapM m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧ (mapM m q t b x) 1 = Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧ (mapM m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
+            unfold mapM; norm_num [ Fin.sum_univ_three ] ; ring_nf;
+            erw [ Matrix.toLin'_apply ] ; ring_nf ;
+            simp_all (config := { decide := true }) only [Fin.isValue]
+            apply And.intro
+            · norm_num [ Matrix.mulVec ] ; ring_nf!;
+            · apply And.intro
+              · simp [Matrix.mulVec];
+                ring!;
+              · simp ( config := { decide := Bool.true } ) [ Matrix.mulVec] ; ring_nf ; aesop ( simp_config := { decide := Bool.true } ) ;
+          rw [ Real.sq_sqrt <| by positivity ] ; rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ] ; ring_nf ; norm_num [ ne_of_gt, hq, hm ] ; ring_nf;
+          norm_num [ hq.ne', hm.ne' ] ; ring;
+        · simp +zetaDelta at *;
+          rw [ EuclideanSpace.norm_eq ] at hxs ;
+          simp_all only [Fin.isValue, Real.norm_eq_abs, sq_abs]
+          rw [ Real.sq_sqrt <| by positivity ] ; rw [ ← Real.sqrt_mul <| by positivity ] at * ; rw [ Real.sqrt_lt_sqrt_iff <| by positivity ] at * ; norm_num [ Fin.sum_univ_three ] at * ; linarith!;
+
+  obtain ⟨x1,y1,z1,hx0,hRST⟩ := this
+  use x1, y1, z1
+  simp [hx0]
+
+  have :  (2 * ↑t * ↑q * ↑x1 + ↑t * ↑b * ↑y1 + ↑m * ↑z1) ^ 2 + (√2 * √↑q * ↑x1 + ↑b / (√2 * √↑q) * ↑y1) ^ 2 +
+    (√↑m / (√2 * √↑q) * ↑y1) ^ 2 = (t ^ 2 + 1 / (2 * q)) * (2 * q * x1 + b * y1)
