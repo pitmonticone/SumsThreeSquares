@@ -1,0 +1,8 @@
+Can you give a self-contained proof of the third fact above:
+3. Every positive-definite integral ternary quadratic form F with determinant 1 is properly equivalent to X^2+Y^2+Z^2.
+
+I would like it in the traditional definition/theorem/proof style. I don't want any motivation, but I do want clear exposition.
+
+Write the proof in Latex, beginning with \documentclass{amsart} and ending with \end{document}. Put the output in a code block.
+
+[Thought for 66m 6s]
