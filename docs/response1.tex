@@ -1,0 +1,296 @@
+\documentclass{amsart}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\leg}[2]{\left(\frac{#1}{#2}\right)}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{corollary}[definition]{Corollary}
+
+\begin{document}
+
+\title{Dirichlet's proof of Legendre's three-square theorem}
+\author{}
+\date{}
+\maketitle
+
+\section{Stated facts and basic definitions}
+
+\begin{definition}[Sum of three squares]
+A positive integer $n$ is \emph{a sum of three squares} if $n=x^2+y^2+z^2$ for some $x,y,z\in\Z$.
+\end{definition}
+
+\begin{definition}[Legendre and Jacobi symbols]
+Let $p$ be an odd prime. The \emph{Legendre symbol} $\leg{a}{p}$ is defined by
+\[
+\leg{a}{p}=
+\begin{cases}
+\phantom{-}0 & p\mid a,\\
+\phantom{-}1 & a \not\equiv 0 \pmod p \text{ and } a \text{ is a square mod }p,\\
+-1 & a \not\equiv 0 \pmod p \text{ and } a \text{ is a nonsquare mod }p.
+\end{cases}
+\]
+If $m$ is an odd positive integer with prime factorization $m=\prod_i p_i^{e_i}$, the \emph{Jacobi symbol} is
+\[
+\leg{a}{m} \;=\; \prod_i \leg{a}{p_i}^{\,e_i}.
+\]
+\end{definition}
+
+\begin{definition}[Integral ternary quadratic forms]
+An \emph{integral ternary quadratic form} is a polynomial
+\[
+F(X,Y,Z)=a_{11}X^2+a_{22}Y^2+a_{33}Z^2+2a_{12}XY+2a_{13}XZ+2a_{23}YZ
+\]
+with $a_{ij}\in\Z$. Its associated symmetric matrix is
+\[
+M_F=\begin{pmatrix}
+a_{11} & a_{12} & a_{13}\\
+a_{12} & a_{22} & a_{23}\\
+a_{13} & a_{23} & a_{33}
+\end{pmatrix},
+\qquad
+F(\mathbf{x})=\mathbf{x}^T M_F \mathbf{x}.
+\]
+The \emph{determinant} of $F$ is $\Delta(F)=\det(M_F)$.
+\end{definition}
+
+\begin{definition}[Proper equivalence]
+Two integral ternary quadratic forms $F$ and $G$ are \emph{properly equivalent} if there exists $A\in \mathrm{SL}_3(\Z)$ such that
+\[
+M_G = A^T M_F A.
+\]
+\end{definition}
+
+\begin{lemma}[Represented integers are invariant under equivalence]\label{lem:equivrep}
+If $F$ and $G$ are properly equivalent, then $F$ and $G$ represent the same set of integers.
+\end{lemma}
+
+\begin{proof}
+If $M_G=A^T M_F A$ with $A\in\mathrm{SL}_3(\Z)$, then for every $\mathbf{x}\in\Z^3$,
+\[
+G(\mathbf{x})=\mathbf{x}^T M_G \mathbf{x}=\mathbf{x}^T A^T M_F A \mathbf{x}=F(A\mathbf{x}).
+\]
+Since $A$ is invertible over $\Z$, the map $\mathbf{x}\mapsto A\mathbf{x}$ is a bijection of $\Z^3$, so the sets of represented integers coincide.
+\end{proof}
+
+\subsection*{Facts (stated without proof)}
+
+\begin{theorem}[Quadratic reciprocity and supplementary laws]\label{thm:QR}
+Let $a,b$ be odd, coprime, positive integers. Then
+\[
+\leg{a}{b}\leg{b}{a}=(-1)^{\frac{a-1}{2}\cdot\frac{b-1}{2}}.
+\]
+Moreover, for odd positive $m$,
+\[
+\leg{-1}{m}=(-1)^{\frac{m-1}{2}},
+\qquad
+\leg{2}{m}=(-1)^{\frac{m^2-1}{8}}.
+\]
+\end{theorem}
+
+\begin{theorem}[Dirichlet's theorem on arithmetic progressions]\label{thm:Dirichlet}
+If $q\ge 1$ and $\gcd(a,q)=1$, then there exist infinitely many primes $p$ with $p\equiv a\pmod q$.
+\end{theorem}
+
+\begin{theorem}[Equivalence class of the trivial unimodular ternary form]\label{thm:unimodular}
+Every positive-definite integral ternary quadratic form $F$ with $\Delta(F)=1$ is properly equivalent to $X^2+Y^2+Z^2$.
+\end{theorem}
+
+\section{Dirichlet's determinant-$1$ construction}
+
+\begin{lemma}\label{lem:oddlift}
+Let $p$ be an odd prime and let $u$ be an odd integer. If $\leg{u}{p}=1$, then $u$ is a square modulo $2p$.
+\end{lemma}
+
+\begin{proof}
+Choose $x\in\Z$ with $x^2\equiv u\pmod p$. If $x$ is even, replace $x$ by $x+p$, which is odd and still satisfies $(x+p)^2\equiv x^2\equiv u\pmod p$. For odd $x$ one has $x^2\equiv 1\pmod 2$, and since $u$ is odd we also have $u\equiv 1\pmod 2$. Thus $x^2\equiv u\pmod 2$ and $x^2\equiv u\pmod p$, hence $x^2\equiv u\pmod{2p}$.
+\end{proof}
+
+\begin{lemma}\label{lem:constructF}
+Let $n\in\N$. Suppose there exist $D\in\N$ and $t\in\Z$ such that
+\[
+t^2 \equiv -D \pmod{Dn-1}.
+\]
+Set
+\[
+a_{22}=Dn-1,\qquad a_{12}=t,\qquad a_{11}=\frac{D+t^2}{a_{22}}\in\Z,
+\]
+and define
+\[
+F(X,Y,Z)=a_{11}X^2+a_{22}Y^2+nZ^2+2a_{12}XY+2XZ.
+\]
+Then $F$ is positive-definite, $\Delta(F)=1$, and $F(0,0,1)=n$. Consequently, $n$ is a sum of three squares.
+\end{lemma}
+
+\begin{proof}
+Since $t^2\equiv -D\pmod{a_{22}}$, the integer $a_{22}$ divides $D+t^2$, so $a_{11}\in\Z$.
+
+The matrix of $F$ is
+\[
+M_F=\begin{pmatrix}
+a_{11} & a_{12} & 1\\
+a_{12} & a_{22} & 0\\
+1 & 0 & n
+\end{pmatrix}.
+\]
+The leading principal minors are
+\[
+a_{11}>0,\qquad
+\det\begin{pmatrix} a_{11} & a_{12}\\ a_{12} & a_{22}\end{pmatrix}
+=a_{11}a_{22}-a_{12}^2
+=\frac{D+t^2}{a_{22}}\cdot a_{22}-t^2
+=D>0,
+\]
+and
+\[
+\Delta(F)=\det(M_F)=\bigl(a_{11}a_{22}-a_{12}^2\bigr)n-a_{22}=Dn-(Dn-1)=1.
+\]
+Hence, by Sylvester's criterion, $F$ is positive-definite. Also $F(0,0,1)=n$.
+
+By Theorem~\ref{thm:unimodular}, $F$ is properly equivalent to $X^2+Y^2+Z^2$, and by Lemma~\ref{lem:equivrep} the latter represents $n$. Thus $n$ is a sum of three squares.
+\end{proof}
+
+\begin{lemma}\label{lem:existD}
+Let $n\in\N$ with $n\equiv 1,2,3,5,$ or $6\pmod 8$. Then there exist $D\in\N$ and $t\in\Z$ such that
+\[
+t^2 \equiv -D \pmod{Dn-1}.
+\]
+\end{lemma}
+
+\begin{proof}
+In each case, Theorem~\ref{thm:Dirichlet} produces a prime $p$ in the specified progression. Define $D$ from $p$ so that $Dn-1$ equals $p$ or $2p$. The computations below use Theorem~\ref{thm:QR}, and Jacobi symbols are understood whenever the denominator is not prime.
+
+\medskip\noindent
+\textbf{Case 1: $n$ even.}
+Then $n\equiv 2$ or $6\pmod 8$, hence $n\equiv 2\pmod 4$.
+Choose a prime
+\[
+p\equiv 2n-1 \pmod{4n}.
+\]
+Write $p=4nk+(2n-1)=(4k+2)n-1$, so $p=Dn-1$ with $D=4k+2\equiv 2\pmod 4$.
+Since $n\equiv 2\pmod 4$ and $D\equiv 2\pmod 4$, one has $Dn\equiv 4\pmod 8$, hence $p\equiv 3\pmod 8$.
+Put $D=2D_1$ with $D_1$ odd. Then
+\[
+\leg{-D}{p}=\leg{-2}{p}\leg{D_1}{p}.
+\]
+Because $p\equiv 3\pmod 8$, the supplementary laws give $\leg{-2}{p}=1$, so $\leg{-D}{p}=\leg{D_1}{p}$.
+By quadratic reciprocity,
+\[
+\leg{D_1}{p}=\leg{p}{D_1}(-1)^{\frac{D_1-1}{2}\cdot\frac{p-1}{2}}.
+\]
+Since $p\equiv -1\pmod D$ and $D_1\mid D$, we have $p\equiv -1\pmod{D_1}$, hence $\leg{p}{D_1}=\leg{-1}{D_1}$.
+Also $p\equiv 3\pmod 4$, so $\frac{p-1}{2}$ is odd and the sign is $(-1)^{\frac{D_1-1}{2}}=\leg{-1}{D_1}$.
+Thus $\leg{D_1}{p}=\leg{-1}{D_1}\cdot\leg{-1}{D_1}=1$, hence $\leg{-D}{p}=1$.
+Therefore $-D$ is a square modulo $p=Dn-1$.
+
+\medskip\noindent
+\textbf{Case 2: $n\equiv 1\pmod 8$.}
+Choose a prime
+\[
+p\equiv 6n-1 \pmod{8n}.
+\]
+Write $p=8nk+(6n-1)=(8k+6)n-1$, so $p=Dn-1$ with $D=8k+6\equiv 6\pmod 8$.
+Then $p\equiv Dn-1\equiv 6\cdot 1-1\equiv 5\pmod 8$.
+Put $D=2D_1$ with $D_1\equiv 3\pmod 4$ odd. Then
+\[
+\leg{-D}{p}=\leg{-2}{p}\leg{D_1}{p}.
+\]
+Since $p\equiv 5\pmod 8$, the supplementary laws give $\leg{-2}{p}=-1$, hence $\leg{-D}{p}=-\leg{D_1}{p}$.
+Because $\frac{p-1}{2}$ is even for $p\equiv 1\pmod 4$, quadratic reciprocity gives $\leg{D_1}{p}=\leg{p}{D_1}$.
+As $p\equiv -1\pmod{D_1}$, we have $\leg{p}{D_1}=\leg{-1}{D_1}=-1$ (since $D_1\equiv 3\pmod 4$).
+Hence $\leg{-D}{p}=-(-1)=1$, so $-D$ is a square modulo $p=Dn-1$.
+
+\medskip\noindent
+\textbf{Case 3: $n\equiv 3\pmod 8$.}
+Choose a prime
+\[
+p\equiv \frac{5n-1}{2} \pmod{4n}.
+\]
+Then $p=4nk+\frac{5n-1}{2}$, so
+\[
+2p = 8nk + (5n-1) = (8k+5)n-1,
+\]
+hence $2p=Dn-1$ with $D=8k+5\equiv 5\pmod 8$. The chosen residue is $\equiv 3\pmod 4$, so $p\equiv 3\pmod 4$.
+Now $D$ is odd, and
+\[
+\leg{-D}{p}=\leg{-1}{p}\leg{D}{p}=-\leg{D}{p}.
+\]
+Since $D\equiv 1\pmod 4$, reciprocity gives $\leg{D}{p}=\leg{p}{D}$, so $\leg{-D}{p}=-\leg{p}{D}$.
+Using $\leg{2p}{D}=\leg{-1}{D}$ (because $2p\equiv -1\pmod D$) and multiplicativity,
+\[
+\leg{p}{D}=\leg{2p}{D}\leg{2}{D}=\leg{-1}{D}\leg{2}{D}.
+\]
+Here $\leg{-1}{D}=1$ since $D\equiv 1\pmod 4$, and $\leg{2}{D}=-1$ since $D\equiv 5\pmod 8$.
+Thus $\leg{p}{D}=-1$, and so $\leg{-D}{p}=1$.
+Therefore $-D$ is a square modulo $p$, and since $D$ is odd the integer $-D$ is odd; Lemma~\ref{lem:oddlift} implies $-D$ is a square modulo $2p=Dn-1$.
+
+\medskip\noindent
+\textbf{Case 4: $n\equiv 5\pmod 8$.}
+Choose a prime
+\[
+p\equiv \frac{3n-1}{2} \pmod{4n}.
+\]
+Then $p=4nk+\frac{3n-1}{2}$, so
+\[
+2p = 8nk + (3n-1) = (8k+3)n-1,
+\]
+hence $2p=Dn-1$ with $D=8k+3\equiv 3\pmod 8$. Again the chosen residue is $\equiv 3\pmod 4$, so $p\equiv 3\pmod 4$.
+With $D$ odd,
+\[
+\leg{-D}{p}=\leg{-1}{p}\leg{D}{p}=-\leg{D}{p}.
+\]
+Since $D\equiv 3\pmod 4$ and $p\equiv 3\pmod 4$, reciprocity gives $\leg{D}{p}=-\leg{p}{D}$, hence $\leg{-D}{p}=\leg{p}{D}$.
+As above,
+\[
+\leg{p}{D}=\leg{2p}{D}\leg{2}{D}=\leg{-1}{D}\leg{2}{D},
+\]
+because $2p\equiv -1\pmod D$. Here $\leg{-1}{D}=-1$ since $D\equiv 3\pmod 4$, and $\leg{2}{D}=-1$ since $D\equiv 3\pmod 8$.
+Thus $\leg{p}{D}=(-1)\cdot(-1)=1$, so $\leg{-D}{p}=1$.
+Hence $-D$ is a square modulo $p$, and since $-D$ is odd, Lemma~\ref{lem:oddlift} implies it is a square modulo $2p=Dn-1$.
+
+\medskip
+In every case, there exists $D>0$ such that $-D$ is a square modulo $Dn-1$. Choosing $t$ with $t^2\equiv -D\pmod{Dn-1}$ completes the proof.
+\end{proof}
+
+\section{Legendre's three-square theorem}
+
+\begin{proposition}\label{prop:onlyif}
+If $n=x^2+y^2+z^2$ for some $x,y,z\in\Z$, then $n$ is not of the form $4^a(8b+7)$ with $a,b\in\Z_{\ge 0}$.
+\end{proposition}
+
+\begin{proof}
+Modulo $8$, every square is congruent to $0,1,$ or $4$, hence a sum of three squares is never congruent to $7\pmod 8$. Thus $n\not\equiv 7\pmod 8$.
+
+If $4\mid n$, then $x^2+y^2+z^2\equiv 0\pmod 4$. Since squares are $0$ or $1\pmod 4$, this forces $x^2\equiv y^2\equiv z^2\equiv 0\pmod 4$, hence $x,y,z$ are even. Writing $x=2x_1$, $y=2y_1$, $z=2z_1$ gives $n/4=x_1^2+y_1^2+z_1^2$. Iterating this argument shows that if $n=4^a m$ with $4\nmid m$, then $m$ is also a sum of three squares, hence $m\not\equiv 7\pmod 8$. Therefore $n$ cannot be of the form $4^a(8b+7)$.
+\end{proof}
+
+\begin{theorem}[Legendre]\label{thm:legendre}
+A positive integer $n$ is a sum of three squares if and only if $n$ is not of the form $4^a(8b+7)$ with $a,b\in\Z_{\ge 0}$.
+\end{theorem}
+
+\begin{proof}
+The ``only if'' direction is Proposition~\ref{prop:onlyif}.
+
+For the converse, assume $n$ is not of the form $4^a(8b+7)$. Write $n=4^a m$ with $a\ge 0$ and $4\nmid m$. Then $m\not\equiv 7\pmod 8$, so
+\[
+m\equiv 1,2,3,5,\text{ or }6 \pmod 8.
+\]
+By Lemma~\ref{lem:existD} there exist $D\in\N$ and $t\in\Z$ with $t^2\equiv -D\pmod{Dm-1}$. Lemma~\ref{lem:constructF} implies that $m$ is a sum of three squares:
+\[
+m = x^2+y^2+z^2.
+\]
+Then
+\[
+n = 4^a m = (2^a x)^2 + (2^a y)^2 + (2^a z)^2,
+\]
+so $n$ is also a sum of three squares.
+\end{proof}
+
+\end{document}
