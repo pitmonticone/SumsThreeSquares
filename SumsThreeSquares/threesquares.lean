@@ -321,8 +321,8 @@ lemma vol_preimage_ball_euclidean (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 <
   -- The volume of the ball of radius $\sqrt{2m}$ is $\frac{4}{3}\pi (\sqrt{2m})^3$.
   have h_ball_volume : (MeasureTheory.volume (Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * ↑m)))) = ENNReal.ofReal ((4 / 3) * Real.pi * (Real.sqrt (2 * ↑m)) ^ 3) := by
     norm_num +zetaDelta at *;
-    rw [ ← ENNReal.ofReal_mul ( by positivity ), ← ENNReal.ofReal_pow ( by positivity ) ] ; ring;
-    rw [ ← ENNReal.ofReal_mul ( by positivity ) ] ; ring;
+    rw [ ← ENNReal.ofReal_mul ( by positivity ), ← ENNReal.ofReal_pow ( by positivity ) ] ; ring_nf;
+    rw [ ← ENNReal.ofReal_mul ( by positivity ) ] ; ring_nf;
   -- The determinant of the linear map is $m^{3/2}$.
   have h_det : abs (LinearMap.det (linear_map_M_euclidean m q t b)) = m * Real.sqrt m := by
     convert congr_arg abs ( det_linear_map_M m q t b hm hq ) using 1;
@@ -403,358 +403,296 @@ Step 1: By Minkowski's theorem, there exist integers x₁, y₁, z₁ (not all z
 R₁² + S₁² + T₁² < 2m, where R, S, T are defined by the linear map.
 -/
 
+private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
+    ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
+    let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
+    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
+    let T := Real.sqrt m / Real.sqrt (2 * q) * y
+    R^2 + S^2 + T^2 < 2 * m := by
+  let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
+  let S_pre := (mapM m q t b) ⁻¹' B
+
+  have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := by
+    intro x hx
+    unfold S_pre B at hx ⊢
+    simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right] at hx ⊢
+    rw [map_neg, norm_neg]
+    exact hx
+
+  have h_conv : Convex ℝ S_pre := by
+    unfold S_pre
+    apply Convex.linear_preimage
+    exact convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
+
+  have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
+    unfold S_pre
+    rw [vol_preimage_ball_mapM m q t b hm hq]
+    norm_num
+    ring_nf
+    field_simp
+    ring_nf
+    have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
+      rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3  : ℝ) = 2 + 1), Real.rpow_add]
+      simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
+      all_goals positivity
+    rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀]
+    · rw [← pow_lt_pow_iff_left₀ (n := 2)]
+      · norm_num1
+        rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
+        nlinarith [Real.pi_gt_d4]
+      · simp
+      · positivity
+      · positivity
+    all_goals positivity
+
+  let E := EuclideanSpace ℝ (Fin 3)
+  have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
+  obtain ⟨x, hx0, hxs, h⟩ := this
+  have hcoor0 := h 0
+  have hcoor1 := h 1
+  have hcoor2 := h 2
+  obtain ⟨R, hr⟩ := hcoor0
+  obtain ⟨S, hs⟩ := hcoor1
+  obtain ⟨T, ht⟩ := hcoor2
+  use R, S, T
+  constructor
+  · contrapose! hx0
+    ext i
+    fin_cases i <;> aesop
+  · convert ( show ( ‖mapM m q t b x‖ ^ 2 : ℝ ) < 2 * m from ?_ ) using 1 <;> norm_num [ EuclideanSpace.norm_eq, Fin.sum_univ_three ] ; ring_nf
+    simp_all only [Nat.ofNat_nonneg, Real.sqrt_mul, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg,
+      norm_neg, implies_true, ne_eq, Fin.isValue, Real.sq_sqrt, Nat.cast_nonneg, inv_pow, S_pre, B]
+    · have h_expand : (mapM m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧
+        (mapM m q t b x) 1 = Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧
+        (mapM m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
+        unfold mapM
+        norm_num [ Fin.sum_univ_three ]
+        ring_nf
+        erw [ Matrix.toLin'_apply ]
+        ring_nf
+        simp_all (config := { decide := true }) only [Fin.isValue]
+        apply And.intro
+        · norm_num [ Matrix.mulVec ]
+          ring_nf!
+        · apply And.intro
+          · simp [Matrix.mulVec]
+            ring!
+          · simp ( config := { decide := Bool.true } ) [ Matrix.mulVec]
+            ring_nf
+            aesop ( simp_config := { decide := Bool.true } )
+      rw [ Real.sq_sqrt <| by positivity ]
+      rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ]
+      ring_nf
+      norm_num [ ne_of_gt, hq, hm ]
+      ring_nf
+      norm_num [ hq.ne', hm.ne' ]
+      ring
+    · simp +zetaDelta at *
+      rw [ EuclideanSpace.norm_eq ] at hxs
+      simp_all only [Fin.isValue, Real.norm_eq_abs, sq_abs]
+      rw [ Real.sq_sqrt <| by positivity ]
+      rw [ ← Real.sqrt_mul <| by positivity ] at *
+      rw [ Real.sqrt_lt_sqrt_iff <| by positivity ] at *
+      norm_num [ Fin.sum_univ_three ] at *
+      linarith!
+
+private lemma rst_expand_eq (m q : ℕ) (t b h x y z : ℤ) (hq : 0 < q)
+    (hbqm : b ^ 2 - 4 * q * h = -m) :
+    (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+      (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+      (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 =
+    (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+      2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
+  have hqf :=
+    congrArg
+      (fun u : ℝ => (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 + u)
+      (quad_form_decomposition m q b h x y hq hbqm)
+  calc
+    (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+        (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+        (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2
+        = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+            ((Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+              (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2) := by ring
+    _ = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+          2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
+          simpa [add_assoc, add_left_comm, add_comm] using hqf
+
+private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
+    (hqt : t^2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
+    (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+      2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) ≡ 0 [ZMOD m] := by
+  ring_nf!
+  have : t * ↑q * x * ↑m * z * 4 + t * b * y * ↑m * z * 2 + t ^ 2 * ↑q * x * b * y * 4 +
+      t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 + ↑q * x ^ 2 * 2 + x * b * y * 2 +
+      y ^ 2 * h * 2 + ↑m ^ 2 * z ^ 2 =
+      t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+      ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 +
+      (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := by ring_nf
+  rw [this]
+  have hdiv : (m : ℤ) ∣ (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := dvd_mul_left _ _
+  have hmodeq : t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+      ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 +
+      (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
+      ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+      ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
+    have h0 : (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m ≡ 0 [ZMOD m] :=
+      Int.modEq_zero_iff_dvd.mpr hdiv
+    calc t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 +
+          (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
+        ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + 0 [ZMOD m] :=
+            Int.ModEq.add (Int.ModEq.refl _) h0
+      _ = t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 := by ring
+  calc t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+        ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 +
+        (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
+      ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
+        ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := hmodeq
+    _ ≡ (t ^ 2 * 2 * ↑q) * x * b * y * 2 + (t ^ 2 * 2 * (q : ℤ)) * ↑q * x ^ 2 * 2 + t ^ 2 * b ^ 2 * y ^ 2 +
+        ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by ring_nf; simp
+    _ ≡ (-1) * x * b * y * 2 + (-1) * ↑q * x ^ 2 * 2 + t ^ 2 * b ^ 2 * y ^ 2 +
+        ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
+      apply Int.ModEq.add
+      apply Int.ModEq.add
+      apply Int.ModEq.add
+      apply Int.ModEq.add
+      apply Int.ModEq.add
+      · have : t ^ 2 * 2 * ↑q * x * b * y * 2 = (t ^ 2 * 2 * ↑q) * (x * b * y * 2) := by ring
+        rw [this]
+        have : (-1 : ℤ) * x * b * y * 2 = (-1) * (x * b * y * 2) := by ring
+        rw [this]
+        exact hqt.mul_right _
+      · have : t ^ 2 * 2 * ↑q * ↑q * x ^ 2 * 2 = (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) := by ring
+        rw [this]
+        have : (-1 : ℤ) * ↑q * x ^ 2 * 2 = (-1) * (↑q * x ^ 2 * 2) := by ring
+        rw [this]
+        exact hqt.mul_right _
+      all_goals exact Int.ModEq.refl _
+    _ = t ^ 2 * b ^ 2 * y ^ 2 + y ^ 2 * h * 2 := by ring
+    _ ≡ 0 [ZMOD m] := by
+      have hb2 : (b : ℤ) ^ 2 = 4 * q * h - m := by linarith [hbqm]
+      have ht2b2 : t ^ 2 * b ^ 2 ≡ t ^ 2 * (4 * q * h) [ZMOD m] := by
+        calc t ^ 2 * b ^ 2 = t ^ 2 * (4 * q * h - m) := by rw [hb2]
+          _ = t ^ 2 * (4 * q * h) - t ^ 2 * m := by ring
+          _ ≡ t ^ 2 * (4 * q * h) - 0 [ZMOD m] := by
+              apply Int.ModEq.sub (Int.ModEq.refl _)
+              exact Int.modEq_zero_iff_dvd.mpr ⟨t^2, by ring⟩
+          _ = t ^ 2 * (4 * q * h) := by ring
+      have ht2_4qh : t ^ 2 * (4 * q * h) ≡ -2 * h [ZMOD m] := by
+        calc t ^ 2 * (4 * q * h) = (t ^ 2 * 2 * q) * (2 * h) := by ring
+          _ ≡ (-1) * (2 * h) [ZMOD m] := hqt.mul_right _
+          _ = -2 * h := by ring
+      calc t ^ 2 * b ^ 2 * y ^ 2 + y ^ 2 * h * 2
+          ≡ (t ^ 2 * (4 * q * h)) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
+            apply Int.ModEq.add _ (Int.ModEq.refl _)
+            exact ht2b2.mul_right _
+        _ ≡ (-2 * h) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
+            apply Int.ModEq.add _ (Int.ModEq.refl _)
+            exact ht2_4qh.mul_right _
+        _ = 0 := by ring
+
+private lemma xyz_zero_of_sum_sq_eq_zero (m q : ℕ) (t b x y z : ℤ)
+    (hm : 0 < m) (hq : 0 < q)
+    (hsum0 :
+      (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+        (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+        (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0) :
+    x = 0 ∧ y = 0 ∧ z = 0 := by
+  have hT0sq : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
+    nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
+      sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
+  have hT0 : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
+    nlinarith [hT0sq]
+  have hy0R : (y : ℝ) = 0 := by
+    have hcoef : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) : ℝ) ≠ 0 := by positivity
+    exact (mul_eq_zero.mp hT0).resolve_left hcoef
+  have hy0 : y = 0 := by exact_mod_cast hy0R
+  have hS0sq : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
+    nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
+      sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
+  have hS0 : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
+    nlinarith [hS0sq]
+  have hx0R : (x : ℝ) = 0 := by
+    have hcoef : (Real.sqrt 2 * Real.sqrt q : ℝ) ≠ 0 := by positivity
+    have hlin : (Real.sqrt 2 * Real.sqrt q : ℝ) * x = 0 := by
+      simpa [hy0R] using hS0
+    exact (mul_eq_zero.mp hlin).resolve_left hcoef
+  have hx0 : x = 0 := by exact_mod_cast hx0R
+  have hR0sq : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 = 0 := by
+    nlinarith [sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y),
+      sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
+  have hR0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) = 0 := by
+    nlinarith [hR0sq]
+  have hz0R : (z : ℝ) = 0 := by
+    have hmne : (m : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hm)
+    have hlin : (m : ℝ) * z = 0 := by
+      simpa [hx0R, hy0R] using hR0
+    exact (mul_eq_zero.mp hlin).resolve_left hmne
+  have hz0 : z = 0 := by exact_mod_cast hz0R
+  exact ⟨hx0, hy0, hz0⟩
+
 lemma exists_lattice_xyz (m q : ℕ) (t b : ℤ) (h : ℤ) (hm : 0 < m) (hq : 0 < q) (hqt : t^2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
     ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
     let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
     let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
     let T := Real.sqrt m / Real.sqrt (2 * q) * y
     R^2 + S^2 + T^2 = m := by
-
-  have : ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
-    let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
-    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
-    let T := Real.sqrt m / Real.sqrt (2 * q) * y
-    R^2 + S^2 + T^2 < 2 * m := by
-      let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
-      -- Define the preimage S under the linear map M
-      let S_pre := (mapM m q t b) ⁻¹' B
-
-      -- Step 1: Show S_pre is symmetric
-      have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := by
-        intro x hx
-        unfold S_pre B at hx ⊢
-        simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right] at hx ⊢
-        rw [map_neg, norm_neg]
-        exact hx
-
-      -- Step 2: Show S_pre is convex
-      have h_conv : Convex ℝ S_pre := by
-        unfold S_pre
-        apply Convex.linear_preimage
-        exact convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
-
-      -- Step 3: Show the volume condition 2³ < volume(S_pre)
-      have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
-        unfold S_pre
-        rw [vol_preimage_ball_mapM m q t b hm hq]
-        norm_num
-        ring_nf
-        -- Need to show: 8 < (4/3) * π * (2m)^(3/2) / (m√m)
-        field_simp
-        ring_nf
-        have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
-          rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3  : ℝ) = 2 + 1), Real.rpow_add]
-          simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
-          all_goals positivity
-        rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀];
-        · rw [← pow_lt_pow_iff_left₀ (n := 2)]
-          · norm_num1
-            rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
-            nlinarith [Real.pi_gt_d4]
-          · simp
-          · positivity
-          · positivity
-        all_goals positivity
-
-
-
-
-
-      let E := EuclideanSpace ℝ (Fin 3)
-      -- define s as the volume bounded by x^2 + y^2 + z^3 ≤ 2*m
-      --We need
-      ---h_symm, h_conv, h
-      --let s : Set E := {X | ‖X‖^2 < 2 * m}
-      have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
-      obtain ⟨x, hx0, hxs, h⟩ := this
-      have hcoor0 := h 0
-      have hcoor1 := h 1
-      have hcoor2 := h 2
-      obtain ⟨R, hr⟩ := hcoor0
-      obtain ⟨S, hs⟩ := hcoor1
-      obtain ⟨T, ht⟩ := hcoor2
-      use R, S, T
-      constructor
-      · contrapose! hx0; ext i; fin_cases i <;> aesop
-      · convert ( show ( ‖mapM m q t b x‖ ^ 2 : ℝ ) < 2 * m from ?_ ) using 1 <;> norm_num [ EuclideanSpace.norm_eq, Fin.sum_univ_three ] ; ring_nf ;
-        simp_all only [Nat.ofNat_nonneg, Real.sqrt_mul, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg,
-          norm_neg, implies_true, ne_eq, Fin.isValue, Real.sq_sqrt, Nat.cast_nonneg, inv_pow, S_pre, B]
-        · -- By definition of matrix multiplication and the properties of the Euclidean norm, we can expand the right-hand side.
-          have h_expand : (mapM m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧ (mapM m q t b x) 1 = Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧ (mapM m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
-            unfold mapM; norm_num [ Fin.sum_univ_three ] ; ring_nf;
-            erw [ Matrix.toLin'_apply ] ; ring_nf ;
-            simp_all (config := { decide := true }) only [Fin.isValue]
-            apply And.intro
-            · norm_num [ Matrix.mulVec ] ; ring_nf!;
-            · apply And.intro
-              · simp [Matrix.mulVec];
-                ring!;
-              · simp ( config := { decide := Bool.true } ) [ Matrix.mulVec] ; ring_nf ; aesop ( simp_config := { decide := Bool.true } ) ;
-          rw [ Real.sq_sqrt <| by positivity ] ; rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ] ; ring_nf ; norm_num [ ne_of_gt, hq, hm ] ; ring_nf;
-          norm_num [ hq.ne', hm.ne' ] ; ring;
-        · simp +zetaDelta at *;
-          rw [ EuclideanSpace.norm_eq ] at hxs ;
-          simp_all only [Fin.isValue, Real.norm_eq_abs, sq_abs]
-          rw [ Real.sq_sqrt <| by positivity ] ; rw [ ← Real.sqrt_mul <| by positivity ] at * ; rw [ Real.sqrt_lt_sqrt_iff <| by positivity ] at * ; norm_num [ Fin.sum_univ_three ] at * ; linarith!;
-
-  obtain ⟨x,y,z,hx0,hRST⟩ := this
+  obtain ⟨x, y, z, hx0, hRST⟩ := exists_lattice_xyz_lt_two_m m q t b hm hq
   use x, y, z
   simp [hx0]
 
-  have hRST_expand : let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
-    let S := Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y
-    let T := Real.sqrt m / Real.sqrt (2 * q) * y
-    R^2 + S^2 + T^2  = R^2 + 2 * (q*x^2 + b*x*y +h*y^2) := by
-      simp
-      have hqf :=
-        congrArg
-          (fun u : ℝ => (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 + u)
-          (quad_form_decomposition m q b h x y hq hbqm)
-      calc
-        (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
-            (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-            (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2
-            = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
-                ((Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-                  (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2) := by ring
-        _ = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
-              2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
-              simpa [add_assoc, add_left_comm, add_comm] using hqf
-
-
-
-  simp at hRST_expand
+  have hRST_expand := rst_expand_eq m q t b h x y z hq hbqm
   rw [hRST_expand]
-  have : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) ≡ 0 [ZMOD m] := by
-    ring_nf!
-    have : t * ↑q * x * ↑m * z * 4 + t * b * y * ↑m * z * 2 + t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + ↑m ^ 2 * z ^ 2 = t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := by ring_nf
-    rw [this]
-    -- The term (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m is divisible by m
-    have hdiv : (m : ℤ) ∣ (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := dvd_mul_left _ _
-    -- So the whole expression is congruent to the first part mod m
-    have hmodeq : t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
-        ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
-      have h0 : (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m ≡ 0 [ZMOD m] :=
-        Int.modEq_zero_iff_dvd.mpr hdiv
-      calc t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-            ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
-          ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-            ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + 0 [ZMOD m] :=
-              Int.ModEq.add (Int.ModEq.refl _) h0
-        _ = t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-            ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 := by ring
-    calc t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 + (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
-        ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := hmodeq
-      _ ≡ (t ^ 2 * 2 * ↑q) * x * b * y * 2 + (t ^ 2 * 2 * (q : ℤ)) * ↑q * x ^ 2 * 2 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2  [ZMOD m] := by ring_nf; simp
-      -- Use hqt : t ^ 2 * 2 * ↑q ≡ -1 [ZMOD ↑m] to substitute
-      _ ≡ (-1) * x * b * y * 2 + (-1) * ↑q * x ^ 2 * 2 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
-        apply Int.ModEq.add
-        apply Int.ModEq.add
-        apply Int.ModEq.add
-        apply Int.ModEq.add
-        apply Int.ModEq.add
-        · have : t ^ 2 * 2 * ↑q * x * b * y * 2 = (t ^ 2 * 2 * ↑q) * (x * b * y * 2) := by ring
-          rw [this]
-          have : (-1 : ℤ) * x * b * y * 2 = (-1) * (x * b * y * 2) := by ring
-          rw [this]
-          exact hqt.mul_right _
-        · have : t ^ 2 * 2 * ↑q * ↑q * x ^ 2 * 2 = (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) := by ring
-          rw [this]
-          have : (-1 : ℤ) * ↑q * x ^ 2 * 2 = (-1) * (↑q * x ^ 2 * 2) := by ring
-          rw [this]
-          exact hqt.mul_right _
-        all_goals exact Int.ModEq.refl _
-      -- Simplify: -2*x*b*y - 2*q*x^2 + t^2*b^2*y^2 + 2*q*x^2 + 2*x*b*y + 2*h*y^2
-      -- = t^2*b^2*y^2 + 2*h*y^2 = y^2 * (t^2*b^2 + 2*h)
-      _ = t ^ 2 * b ^ 2 * y ^ 2 + y ^ 2 * h * 2 := by ring
-      -- Now we need t^2 * b^2 + 2*h ≡ 0 (mod m)
-      -- From hqt: t^2 * 2 * q ≡ -1 (mod m), so t^2 * b^2 * 2 * q ≡ -b^2 (mod m)
-      -- From hbqm: b^2 = 4*q*h - m, so b^2 ≡ 4*q*h (mod m)
-      -- So t^2 * b^2 * 2 * q ≡ -4*q*h (mod m)
-      -- Thus t^2 * b^2 ≡ -2*h (mod m) (dividing by 2*q, which is valid if gcd(2q, m) = 1)
-      _ ≡ 0 [ZMOD m] := by
-        -- Use t^2 * 2 * q ≡ -1 and b^2 = 4*q*h - m
-        have hb2 : (b : ℤ) ^ 2 = 4 * q * h - m := by linarith [hbqm]
-        -- t^2 * b^2 ≡ t^2 * (4*q*h - m) ≡ t^2 * 4 * q * h (mod m)
-        have ht2b2 : t ^ 2 * b ^ 2 ≡ t ^ 2 * (4 * q * h) [ZMOD m] := by
-          calc t ^ 2 * b ^ 2 = t ^ 2 * (4 * q * h - m) := by rw [hb2]
-            _ = t ^ 2 * (4 * q * h) - t ^ 2 * m := by ring
-            _ ≡ t ^ 2 * (4 * q * h) - 0 [ZMOD m] := by
-                apply Int.ModEq.sub (Int.ModEq.refl _)
-                exact Int.modEq_zero_iff_dvd.mpr ⟨t^2, by ring⟩
-            _ = t ^ 2 * (4 * q * h) := by ring
-        -- t^2 * 4 * q * h = (t^2 * 2 * q) * 2 * h ≡ -1 * 2 * h = -2*h (mod m)
-        have ht2_4qh : t ^ 2 * (4 * q * h) ≡ -2 * h [ZMOD m] := by
-          calc t ^ 2 * (4 * q * h) = (t ^ 2 * 2 * q) * (2 * h) := by ring
-            _ ≡ (-1) * (2 * h) [ZMOD m] := hqt.mul_right _
-            _ = -2 * h := by ring
-        -- So t^2 * b^2 ≡ -2*h (mod m)
-        calc t ^ 2 * b ^ 2 * y ^ 2 + y ^ 2 * h * 2
-            ≡ (t ^ 2 * (4 * q * h)) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
-              apply Int.ModEq.add _ (Int.ModEq.refl _)
-              exact ht2b2.mul_right _
-          _ ≡ (-2 * h) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
-              apply Int.ModEq.add _ (Int.ModEq.refl _)
-              exact ht2_4qh.mul_right _
-          _ = 0 := by ring
-  -- Now we know R^2 + 2*(q*x^2 + b*x*y + h*y^2) ≡ 0 (mod m) where R = 2*t*q*x + t*b*y + m*z
-  -- So R^2 + S^2 + T^2 ≡ 0 (mod m)
-  -- But R^2 + S^2 + T^2 < 2m and R^2 + S^2 + T^2 ≥ 0
-  -- So R^2 + S^2 + T^2 ∈ {0, m}
-  -- Since (x,y,z) ≠ (0,0,0), we need to show R^2 + S^2 + T^2 > 0 hence = m
+  have hmod0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+      2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) ≡ 0 [ZMOD m] :=
+    rst_modEq_zero m q t b h x y z hqt hbqm
+  obtain ⟨k, hk⟩ := Int.modEq_zero_iff_dvd.mp hmod0
 
-  -- The goal is now to show R^2 + S^2 + T^2 = m
-  -- We have:
-  -- 1. this : (2*t*q*x + t*b*y + m*z)^2 + 2*(q*x^2 + b*x*y + h*y^2) ≡ 0 [ZMOD m]
-  -- 2. hRST : R^2 + S^2 + T^2 < 2*m (from Minkowski)
-  -- 3. R^2 + S^2 + T^2 ≥ 0 (sum of squares)
-  -- 4. hx0 : (x,y,z) ≠ (0,0,0)
-
-  -- First, show that R^2 + S^2 + T^2 is a multiple of m in ℝ
-  -- Since R^2 + S^2 + T^2 = R^2 + 2*(q*x^2 + b*x*y + h*y^2) and this ≡ 0 (mod m) as integers
-  -- we need to connect the real and integer worlds
-
-  -- The expression (2*t*q*x + t*b*y + m*z)^2 + 2*(q*x^2 + b*x*y + h*y^2) is an integer
-  -- Get k and show 0 ≤ k < 2
-  obtain ⟨k, hk⟩ := Int.modEq_zero_iff_dvd.mp this
-
-  -- The real version equals the integer version cast to ℝ
   have hreal : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) =
                ((2 * t * ↑q * x + t * b * y + ↑m * z) ^ 2 + 2 * (↑q * x ^ 2 + b * x * y + h * y ^ 2) : ℤ) := by
     push_cast; ring
 
-  -- So R^2 + S^2 + T^2 = k * m as reals
   have hkm : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) = k * m := by
     rw [hreal, hk]; push_cast; ring
 
-  -- Since R^2 + S^2 + T^2 ≥ 0, we have k * m ≥ 0, so k ≥ 0 (since m > 0)
+  have hsum_nonneg :
+      0 ≤ (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+        (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+        (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 := by
+    nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
+      sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y),
+      sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y)]
+
   have hk_nonneg : 0 ≤ k := by
-    have h1 : (0 : ℝ) ≤ (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
-      -- The first term is a square, so ≥ 0
-      -- The expression equals R^2 + S^2 + T^2 which is ≥ 0
-      have hRST' : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-                   (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-                   (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 < 2 * m := hRST
-      have heq : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) =
-                 (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-                 (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-                 (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 := by
-        -- This follows from: S^2 + T^2 = 2*(q*x^2 + b*x*y + h*y^2)
-        have hST : (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-                   (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 =
-                   2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
-          have hsqrt_2q_pos : Real.sqrt (2 * q) ≠ 0 := by positivity
-          have hsqrt_2q_sq : Real.sqrt (2 * q) ^ 2 = 2 * q := Real.sq_sqrt (by positivity)
-          have hsqrt_m_sq : Real.sqrt m ^ 2 = m := Real.sq_sqrt (by positivity : (0 : ℝ) ≤ m)
-          have hb2 : (b : ℝ)^2 = 4 * q * h - m := by
-            have h1 : (b : ℤ) ^ 2 = 4 * q * h - m := by linarith [hbqm]
-            exact_mod_cast h1
-          field_simp
-          rw [hsqrt_2q_sq, hsqrt_m_sq]
-          -- Goal: (2*q*x + b*y)^2 + y^2*m = 2*(2*q)*(x*(q*x + b*y) + y^2*h)
-          -- Expand: 4*q^2*x^2 + 4*q*x*b*y + b^2*y^2 + m*y^2 = 4*q*(q*x^2 + b*x*y + h*y^2)
-          -- = 4*q^2*x^2 + 4*q*b*x*y + 4*q*h*y^2
-          -- So we need: b^2*y^2 + m*y^2 = 4*q*h*y^2
-          -- i.e. b^2 + m = 4*q*h
-          -- But we have b^2 = 4*q*h - m, so b^2 + m = 4*q*h ✓
-          have hb2' : (b : ℝ)^2 + m = 4 * q * h := by linarith [hb2]
-          ring_nf
-          nlinarith [sq_nonneg (x : ℝ), sq_nonneg (y : ℝ), hb2', hb2]
-        linarith [hST]
-      rw [heq]
-      have h1 : 0 ≤ (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 := sq_nonneg _
-      have h2 : 0 ≤ (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 := sq_nonneg _
-      have h3 : 0 ≤ (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 := sq_nonneg _
-      linarith
+    have h1 : (0 : ℝ) ≤ (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+        2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
+      simpa [hRST_expand] using hsum_nonneg
     rw [hkm] at h1
     have hm_pos : (0 : ℝ) < m := by exact_mod_cast hm
     have : (0 : ℝ) ≤ k * m := h1
     exact_mod_cast (mul_nonneg_iff_of_pos_right hm_pos).mp this
 
-  -- Since R^2 + S^2 + T^2 < 2*m, we have k * m < 2 * m, so k < 2
   have hk_lt_2 : k < 2 := by
-    have h1 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 + 2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) < 2 * m := by
-      convert hRST using 1
-      -- Need: R^2 + S^2 + T^2 = R^2 + 2*(q*x^2 + b*x*y + h*y^2)
-      -- i.e., S^2 + T^2 = 2*(q*x^2 + b*x*y + h*y^2)
-      have hsqrt_2q_pos : Real.sqrt (2 * q) ≠ 0 := by positivity
-      have hsqrt_2q_sq : Real.sqrt (2 * q) ^ 2 = 2 * q := Real.sq_sqrt (by positivity)
-      have hsqrt_m_sq : Real.sqrt m ^ 2 = m := Real.sq_sqrt (by positivity : (0 : ℝ) ≤ m)
-      have hb2 : (b : ℝ)^2 = 4 * q * h - m := by
-        have h1 : (b : ℤ) ^ 2 = 4 * q * h - m := by linarith [hbqm]
-        exact_mod_cast h1
-      have hb2' : (b : ℝ)^2 + m = 4 * q * h := by linarith [hb2]
-      simp only [add_assoc]
-      congr 1
-      field_simp
-      rw [hsqrt_2q_sq, hsqrt_m_sq]
-      ring_nf
-      nlinarith [sq_nonneg (x : ℝ), sq_nonneg (y : ℝ), hb2', hb2]
+    have h1 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+        2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) < 2 * m := by
+      simpa [hRST_expand] using hRST
     rw [hkm] at h1
-    have hm_pos : (0 : ℝ) < m := by exact_mod_cast hm
     have : (k : ℝ) * m < 2 * m := h1
     have : (k : ℝ) < 2 := by nlinarith
     exact_mod_cast this
 
-  -- So k ∈ {0, 1}
   interval_cases k
   · exfalso
-    have h_expr0 :
-        (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-          2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) = 0 := by
-      simpa using hkm
     have h_sum0 :
         (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
           (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
           (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-      calc
-        (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-            (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-            (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2
-            = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-                2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
-                  exact hRST_expand
-        _ = 0 := h_expr0
-    have hT0sq : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-      nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
-        sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y), h_sum0]
-    have hT0 : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
-      nlinarith [hT0sq]
-    have hy0R : (y : ℝ) = 0 := by
-      have hcoef : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) : ℝ) ≠ 0 := by positivity
-      exact (mul_eq_zero.mp hT0).resolve_left hcoef
-    have hy0 : y = 0 := by exact_mod_cast hy0R
-    have hS0sq : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-      nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
-        sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), h_sum0]
-    have hS0 : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
-      nlinarith [hS0sq]
-    have hx0R : (x : ℝ) = 0 := by
-      have hcoef : (Real.sqrt 2 * Real.sqrt q : ℝ) ≠ 0 := by positivity
-      have hlin : (Real.sqrt 2 * Real.sqrt q : ℝ) * x = 0 := by
-        simpa [hy0R] using hS0
-      exact (mul_eq_zero.mp hlin).resolve_left hcoef
-    have hx0' : x = 0 := by exact_mod_cast hx0R
-    have hR0sq : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 = 0 := by
-      nlinarith [sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y),
-        sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), h_sum0]
-    have hR0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) = 0 := by
-      nlinarith [hR0sq]
-    have hz0R : (z : ℝ) = 0 := by
-      have hmne : (m : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hm)
-      have hlin : (m : ℝ) * z = 0 := by
-        simpa [hx0R, hy0R] using hR0
-      exact (mul_eq_zero.mp hlin).resolve_left hmne
-    have hz0 : z = 0 := by exact_mod_cast hz0R
-    exact hx0 (by simp [hx0', hy0, hz0])
+      simp [hRST_expand, hkm]
+    obtain ⟨hx, hy, hz⟩ := xyz_zero_of_sum_sq_eq_zero m q t b x y z hm hq h_sum0
+    exact hx0 (by simp [hx, hy, hz])
   · simpa using hkm
 
 theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m)
