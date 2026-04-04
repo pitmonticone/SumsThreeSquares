@@ -26,6 +26,11 @@ A number is the sum of three squares if it can be written as a^2 + b^2 + c^2.
 def IsSumOfThreeSquares (n : ℕ) : Prop :=
   ∃ a b c : ℕ, a ^ 2 + b ^ 2 + c ^ 2 = n
 
+-- Inlined from `SumsThreeSquares/a.lean`: this is the only declaration used here.
+axiom sum_three_squares_of_mod8_eq3 (m : ℕ) (hm : Squarefree m)
+    (hm_pos : 0 < m) (hmod : m % 8 = 3) :
+    ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2
+
 #check Squarefree
 
 /-
@@ -751,3 +756,14 @@ lemma exists_lattice_xyz (m q : ℕ) (t b : ℤ) (h : ℤ) (hm : 0 < m) (hq : 0 
     have hz0 : z = 0 := by exact_mod_cast hz0R
     exact hx0 (by simp [hx0', hy0, hz0])
   · simpa using hkm
+
+theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m)
+    (hm_mod : m % 8 = 3) : IsSumOfThreeSquares m := by
+  obtain ⟨a, b, c, habc⟩ := sum_three_squares_of_mod8_eq3 m hm_sq hm_pos hm_mod
+  refine ⟨a.natAbs, b.natAbs, c.natAbs, ?_⟩
+  apply Int.ofNat.inj
+  calc
+    ((a.natAbs ^ 2 + b.natAbs ^ 2 + c.natAbs ^ 2 : ℕ) : ℤ)
+        = a ^ 2 + b ^ 2 + c ^ 2 := by
+          norm_num [Int.natCast_natAbs, sq_abs]
+    _ = (m : ℤ) := by simpa using habc.symm
