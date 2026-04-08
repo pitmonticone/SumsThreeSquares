@@ -1,21 +1,15 @@
 import Mathlib
 import SumsThreeSquares.minkowskiconvex
+-- import SumsThreeSquares.threesquares2
 
 
 open scoped BigOperators
-
 open scoped Real Int
-
 open scoped Nat
-
 open scoped Classical
-
 open scoped Pointwise
-
 set_option maxHeartbeats 0
-
 set_option relaxedAutoImplicit false
-
 set_option autoImplicit false
 
 noncomputable section
@@ -26,12 +20,6 @@ A number is the sum of three squares if it can be written as a^2 + b^2 + c^2.
 def IsSumOfThreeSquares (n : ℕ) : Prop :=
   ∃ a b c : ℕ, a ^ 2 + b ^ 2 + c ^ 2 = n
 
--- Inlined from `SumsThreeSquares/a.lean`: this is the only declaration used here.
-axiom sum_three_squares_of_mod8_eq3 (m : ℕ) (hm : Squarefree m)
-    (hm_pos : 0 < m) (hmod : m % 8 = 3) :
-    ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2
-
-#check Squarefree
 
 /-
 There exists a prime $q$ such that $q \equiv 1 \pmod 4$ and $(-2q/p) = 1$ for all prime factors $p$ of $m$.
@@ -294,10 +282,6 @@ lemma det_linear_map_M_ne_zero (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q)
   rw [ det_linear_map_M m q t b hm hq ]
   positivity
 
-#check MeasureTheory.volume
-
-#check (dist : (Fin 3 → ℝ) → (Fin 3 → ℝ) → ℝ)
-
 /-
 The linear map corresponding to the matrix M.
 -/
@@ -350,7 +334,7 @@ The volume of a ball of radius $r$ in $\mathbb{R}^3$ is $\frac{4}{3}\pi r^3$.
 -/
 lemma volume_ball_fin3 (r : ℝ) (hr : 0 ≤ r) :
     MeasureTheory.volume (Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) r) = ENNReal.ofReal ((4 / 3) * Real.pi * r ^ 3) := by
-      erw [ MeasureTheory.Measure.addHaar_ball ] ; norm_num ; ring;
+      erw [ MeasureTheory.Measure.addHaar_ball ] ; norm_num ; ring_nf;
       · rw [ ← ENNReal.ofReal_mul ( by positivity ), mul_assoc ];
       · positivity
 
@@ -695,6 +679,339 @@ lemma exists_lattice_xyz (m q : ℕ) (t b : ℤ) (h : ℤ) (hm : 0 < m) (hq : 0 
     exact hx0 (by simp [hx, hy, hz])
   · simpa using hkm
 
+
+
+/-
+Step 5 & 6: Use Minkowski's theorem to get R, v with R² + 2v = m, v > 0
+-/
+lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
+    (hqt : t ^ 2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
+    ∃ (x y : ℤ) (R : ℤ) (v : ℕ),
+      (v : ℤ) = q * x ^ 2 + b * x * y + h * y ^ 2 ∧
+      R ^ 2 + 2 * (v : ℤ) = (m : ℤ) ∧
+      0 < v := by
+  have h_exists : ∃ x y z : ℤ, (x, y, z) ≠ (0, 0, 0) ∧
+      (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+      (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
+      (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 < 2 * m := by
+    simpa using exists_lattice_xyz_lt_two_m m q t b hm hq
+  obtain ⟨ x, y, z, hne, hlt ⟩ := h_exists;
+  -- From the inequality $R^2 + 2v < 2m$, we know that $R^2 + 2v$ must be either $0$ or $m$ since $m$ is a positive integer.
+  have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) = 0 ∨ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) = m := by
+    have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) ≡ 0 [ZMOD m] := by
+      exact rst_modEq_zero m q t b h x y z hqt hbqm
+    have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) < 2 * m := by
+      have h_expand : (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+          (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
+          (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 =
+          (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+          2 * (q * x ^ 2 + b * x * y + h * y ^ 2) := by
+        have hsqrt : (Real.sqrt (2 * q : ℝ)) = Real.sqrt 2 * Real.sqrt q := by
+          simp [Real.sqrt_mul (show (0 : ℝ) ≤ 2 by norm_num) (q : ℝ)]
+        calc
+          (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+              (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
+              (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2
+              = (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+                (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+                (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 := by
+                  simp [mul_assoc, mul_left_comm, mul_comm]
+          _ = (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+              2 * (q * x ^ 2 + b * x * y + h * y ^ 2) :=
+                rst_expand_eq m q t b h x y z (by positivity) (by simpa using hbqm)
+      exact_mod_cast h_expand ▸ hlt;
+    obtain ⟨ k, hk ⟩ := Int.modEq_zero_iff_dvd.mp ‹_›;
+    have hquad_nonneg : (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 ≥ 0 := by
+      nlinarith [sq_nonneg (2 * q * x + b * y)]
+    have hexpr_nonneg : 0 ≤ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
+        2 * (q * x ^ 2 + b * x * y + h * y ^ 2) := by
+      nlinarith [sq_nonneg (2 * t * q * x + t * b * y + m * z), hquad_nonneg]
+    have hk_nonneg : 0 ≤ k := by
+      have hm_nonneg : (0 : ℤ) ≤ m := by exact_mod_cast Nat.zero_le m
+      nlinarith [hk, hexpr_nonneg, hm_nonneg]
+    have hk_lt_two : k < 2 := by
+      have hm_pos' : (0 : ℤ) < m := by exact_mod_cast hm
+      nlinarith [hk, h_cases, hm_pos']
+    have hk_zero_or_one : k = 0 ∨ k = 1 := by omega
+    rcases hk_zero_or_one with rfl | rfl
+    · left
+      nlinarith [hk]
+    · right
+      nlinarith [hk]
+  cases' h_cases with h_case1 h_case2;
+  · -- If $R^2 + 2v = 0$, then $x = y = z = 0$, contradicting $(x, y, z) \neq (0, 0, 0)$.
+    have h_contra : x = 0 ∧ y = 0 ∧ z = 0 := by
+      apply xyz_zero_of_sum_sq_eq_zero m q t b x y z hm hq
+      have hsum0 :
+          (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+            (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+            (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
+        calc
+          (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+              (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+              (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2
+              = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+                2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) :=
+                  rst_expand_eq m q t b h x y z hq (by simpa using hbqm)
+          _ = 0 := by
+                simpa using congr_arg ((↑) : ℤ → ℝ) h_case1
+      exact hsum0
+    aesop;
+  · refine' ⟨ x, y, 2 * t * q * x + t * b * y + m * z, Int.toNat ( q * x ^ 2 + b * x * y + h * y ^ 2 ), _, _, _ ⟩ <;> norm_num;
+    · nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
+    · rw [ max_eq_left ];
+      · convert h_case2 using 1;
+      · nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
+    · contrapose! hne;
+      have hxy_zero : x = 0 ∧ y = 0 := by
+        have hxy_zero : q * x ^ 2 + b * x * y + h * y ^ 2 = 0 := by
+          nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
+        by_cases hy : y = 0;
+        · aesop;
+        · nlinarith [ sq_nonneg ( 2 * q * x + b * y ), mul_self_pos.mpr hy ];
+      simp_all +decide;
+      rcases m with ( _ | _ | m ) <;> norm_num at *;
+      · exact absurd ( congr_arg ( · % 4 ) hbqm ) ( by norm_num [ sq, Int.add_emod, Int.sub_emod, Int.mul_emod ] ; have := Int.emod_nonneg b four_pos.ne'; have := Int.emod_lt_of_pos b four_pos; interval_cases b % 4 <;> trivial );
+      · nlinarith [ show z ^ 2 * ( m + 1 + 1 ) = 1 by nlinarith ]
+/-- There exist q, b, h, t, x, y, z yielding R² + 2v = m with v > 0 -/
+lemma exists_R_v_of_mod8_eq3 (m : ℕ) (hm : Squarefree m) (hm_pos : 0 < m) (hmod : m % 8 = 3) :
+    ∃ (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ),
+      Nat.Prime q ∧ q % 4 = 1 ∧
+      (∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * ↑q) ↑p = 1) ∧
+      b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ) ∧
+      (v : ℤ) = q * x ^ 2 + b * x * y + h * y ^ 2 ∧
+      R ^ 2 + 2 * (v : ℤ) = (m : ℤ) ∧
+      0 < v := by
+  obtain ⟨q, hq_prime, hq_mod, hjac⟩ := exists_prime_aux m hm hmod
+  obtain ⟨b, h, _, hbqm⟩ := exists_b_h m q hmod hq_prime hq_mod (jacobi_neg_m_q m q hmod hq_prime hq_mod hjac)
+  obtain ⟨t, hqt⟩ := exists_t m q hm hmod hq_prime hjac
+  have hqt' : t ^ 2 * 2 * q ≡ -1 [ZMOD m] := by
+    simpa [mul_assoc, mul_comm, mul_left_comm] using hqt
+  obtain ⟨x, y, R, v, hv_def, hRv, hv_pos⟩ :=
+    exists_Rv_from_Minkowski m q t b h hm_pos (hq_prime.pos) hqt' hbqm
+  exact ⟨q, b, h, x, y, R, v, hq_prime, hq_mod, hjac, hbqm, hv_def, hRv, hv_pos⟩
+
+lemma jacobi_neg_d_of_dvd_sq_add (p : ℕ) (a d b' : ℤ)
+    (hp : Nat.Prime p) (_hp_odd : p ≠ 2)
+    (hp_dvd : (p : ℤ) ∣ a ^ 2 + d * b' ^ 2)
+    (hp_not_dvd_d : ¬ (p : ℤ) ∣ d)
+    (hp_not_dvd_b : ¬ (p : ℤ) ∣ b') :
+    jacobiSym (-d) p = 1 := by
+  haveI := Fact.mk hp
+  rw [jacobiSym]
+  norm_num [Nat.primeFactorsList_prime hp]
+  simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd, legendreSym.eq_one_iff]
+  use a / b'
+  grind
+
+lemma jacobi_neg_d_of_odd_padicVal (p : ℕ) (a d b' : ℤ)
+    (hp : Nat.Prime p) (hp_odd : p ≠ 2)
+    (hp_not_dvd_d : ¬ (p : ℤ) ∣ d)
+    (h_odd_val : ¬ Even (padicValInt p (a ^ 2 + d * b' ^ 2))) :
+    jacobiSym (-d) p = 1 := by
+  induction' n : Int.natAbs a + Int.natAbs b' using Nat.strong_induction_on with n ih generalizing a b'
+  by_cases h_div_b' : (p : ℤ) ∣ b'
+  · obtain ⟨k, hk⟩ := h_div_b'
+    obtain ⟨a', ha'⟩ : ∃ a', a = p * a' := by
+      have h_div_a : (p : ℤ) ∣ a ^ 2 + d * b' ^ 2 := by
+        contrapose! h_odd_val
+        rw [padicValInt.eq_zero_of_not_dvd h_odd_val]
+        norm_num
+      exact Int.Prime.dvd_pow' hp <| by simpa [hk, ← ZMod.intCast_zmod_eq_zero_iff_dvd] using h_div_a
+    contrapose! ih
+    refine' ⟨_, _, a', k, _, rfl, ih⟩
+    · rcases eq_or_ne a' 0 with ha0 | ha0 <;> rcases eq_or_ne k 0 with hk0 | hk0 <;>
+        simp_all +decide [Int.natAbs_mul]
+      · exact n ▸ lt_mul_of_one_lt_left (Int.natAbs_pos.mpr hk0) hp.one_lt
+      · exact n ▸ lt_mul_of_one_lt_left (Int.natAbs_pos.mpr ha0) hp.one_lt
+      · nlinarith [hp.two_le, abs_pos.mpr ha0, abs_pos.mpr hk0]
+    · simp_all +decide [padicValInt, parity_simps]
+      rw [show (p * a') ^ 2 + d * (p * k) ^ 2 = p ^ 2 * (a' ^ 2 + d * k ^ 2) by ring,
+        Int.natAbs_mul, Int.natAbs_pow] at h_odd_val
+      haveI := Fact.mk hp
+      rw [padicValNat.mul] at h_odd_val <;> simp_all +decide [parity_simps]
+      · exact hp.ne_zero
+      · intro H
+        simp_all +decide
+  · apply jacobi_neg_d_of_dvd_sq_add p a d b' hp hp_odd
+    · contrapose! h_odd_val
+      rw [padicValInt.eq_zero_of_not_dvd h_odd_val]
+      norm_num
+    · exact hp_not_dvd_d
+    · exact h_div_b'
+
+lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
+    (hp : Nat.Prime p) (hp_odd : p ≠ 2)
+    (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * q * h = -m)
+    (hRv : R ^ 2 + 2 * v = m)
+    (hpv : ¬ Even (padicValInt p v))
+    (hpm : ¬ (p : ℤ) ∣ m) :
+    p % 4 = 1 := by
+  have h_jacobi_m : jacobiSym m p = 1 := by
+    have hm_mod : (R ^ 2 : ℤ) ≡ m [ZMOD p] := by
+      norm_num [← hRv, Int.modEq_iff_dvd]
+      refine dvd_mul_of_dvd_right ?_ _
+      contrapose! hpv
+      simp_all +decide [padicValInt.eq_zero_of_not_dvd]
+    haveI := Fact.mk hp
+    simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
+    simp +decide [Nat.primeFactorsList_prime hp]
+    haveI := Fact.mk hp
+    rw [legendreSym.eq_one_iff]
+    · aesop
+    · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpm
+  have h_jacobi_neg_m : jacobiSym (-m) p = 1 := by
+    by_cases hpq : (p : ℤ) ∣ q <;> simp_all
+    · have hb_sq_mod_p : b ^ 2 ≡ -m [ZMOD p] := by
+        exact Int.modEq_iff_dvd.mpr ⟨-4 * h * hpq.choose, by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
+      haveI := Fact.mk hp
+      simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
+      simp_all +decide [Nat.primeFactorsList_prime hp]
+      rw [legendreSym.eq_one_iff] at *
+      · exact ⟨b, by simpa [sq] using hb_sq_mod_p.symm⟩
+      · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpm
+      · simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
+    · have h_jacobi_neg_m_odd : ¬ Even (padicValInt p ((2 * q * x + b * y) ^ 2 + m * y ^ 2)) := by
+        have h_jacobi_neg_m_odd : padicValInt p (4 * q * v) = padicValInt p v := by
+          haveI := Fact.mk hp
+          rw [padicValInt.mul, padicValInt.mul] <;> norm_num
+          · exact ⟨Or.inr <| mod_cast fun h => hp_odd <| by have := Nat.le_of_dvd (by decide) h; interval_cases p <;> trivial,
+              Or.inr <| Or.inr hpq⟩
+          · aesop
+          · aesop_cat
+          · aesop
+        grind
+      apply jacobi_neg_d_of_odd_padicVal p (2 * q * x + b * y) m y hp hp_odd hpm h_jacobi_neg_m_odd
+  have h_jacobi_neg_1 : jacobiSym (-1) p = 1 := by
+    have h_mul : jacobiSym (-m) p = jacobiSym (-1) p * jacobiSym m p := by
+      simpa [neg_mul] using (jacobiSym.mul_left (-1) m p)
+    rw [h_mul, h_jacobi_m] at h_jacobi_neg_m
+    simpa using h_jacobi_neg_m
+  rw [jacobiSym.at_neg_one] at h_jacobi_neg_1
+  · rw [ZMod.χ₄_nat_mod_four] at h_jacobi_neg_1
+    have := Nat.mod_lt p zero_lt_four
+    interval_cases p % 4 <;> trivial
+  · exact hp.odd_of_ne_two hp_odd
+
+lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m : ℕ)
+    (hp : Nat.Prime p) (hp3 : p % 4 = 3)
+    (hm_sq : Squarefree m)
+    (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
+    (hRv : R ^ 2 + 2 * v = m)
+    (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m)
+    (hjac : jacobiSym (-2 * q) p = 1) :
+    False := by
+  have hp_R : (p : ℤ) ∣ R := by
+    exact Int.Prime.dvd_pow' hp <| by
+      rw [← Int.dvd_add_left (dvd_mul_of_dvd_right hpv _)]
+      exact hRv.symm ▸ Int.natCast_dvd_natCast.mpr hpm
+  have hp_2qx_by : (p : ℤ) ∣ (2 * q * x + b * y) := by
+    have hp_2qx_by : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
+      convert hpv.mul_left (4 * q) using 1
+      rw [hv]
+      linear_combination' hbqm * y ^ 2
+    haveI := Fact.mk hp
+    simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
+    obtain ⟨k, hk⟩ := hpm
+    simp_all
+  have h_y_sq_mod_p : y ^ 2 ≡ 2 * q [ZMOD p] := by
+    have h_div_p : (m / p : ℤ) * y ^ 2 ≡ (m / p : ℤ) * (2 * q) [ZMOD p] := by
+      have h_div_p : (4 * q * v : ℤ) ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
+        obtain ⟨k, hk⟩ := hpv
+        simp_all +decide [Int.modEq_iff_dvd]
+        obtain ⟨a, ha⟩ := hp_R
+        obtain ⟨b', hb'⟩ := hp_2qx_by
+        simp_all +decide [← eq_sub_iff_add_eq', ← mul_assoc]
+        exact ⟨a ^ 2 * 2 * q, by nlinarith⟩
+      have h_div_p : (4 * q * v : ℤ) ≡ (2 * q * x + b * y) ^ 2 + m * y ^ 2 [ZMOD p ^ 2] := by
+        exact Int.modEq_of_dvd ⟨0, by rw [hv]; linear_combination' hbqm * y ^ 2⟩
+      have h_div_p : (m : ℤ) * y ^ 2 ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
+        simp_all +decide [Int.ModEq]
+        rw [Int.emod_eq_emod_iff_emod_sub_eq_zero] at *
+        aesop
+      rw [Int.modEq_iff_dvd] at *
+      obtain ⟨k, hk⟩ := h_div_p
+      use k
+      nlinarith [hp.two_le, Int.ediv_mul_cancel (show (p : ℤ) ∣ m from mod_cast hpm)]
+    haveI := Fact.mk hp
+    simp_all +decide [← ZMod.intCast_eq_intCast_iff]
+    cases h_div_p <;> simp_all +decide [ZMod.intCast_zmod_eq_zero_iff_dvd]
+    norm_cast at *
+    simp_all +decide [Nat.squarefree_iff_prime_squarefree]
+  have h_jacobi_2q_p : jacobiSym (2 * q) p = 1 := by
+    haveI := Fact.mk hp
+    simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
+    simp_all +decide [Nat.primeFactorsList_prime hp]
+    rw [legendreSym.eq_one_iff]
+    · exact ⟨y, by simpa [sq, ← ZMod.intCast_eq_intCast_iff] using h_y_sq_mod_p.symm⟩
+    · intro H
+      simp_all +decide [legendreSym]
+  haveI := Fact.mk hp
+  simp_all +decide [jacobiSym.mul_left, ← ZMod.intCast_eq_intCast_iff]
+  rw [jacobiSym.neg] at hjac
+  · rw [ZMod.χ₄_nat_mod_four] at hjac
+    simp_all +decide [jacobiSym.mul_left]
+  · exact hp.odd_of_ne_two <| by aesop_cat
+
+lemma even_padicVal_of_mod4_eq3 (p : ℕ) (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ) (m : ℕ)
+    (hp : Nat.Prime p) (hp3 : p % 4 = 3)
+    (hm_sq : Squarefree m)
+    (hv_pos : 0 < v)
+    (hv_def : (v : ℤ) = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
+    (hRv : R ^ 2 + 2 * (v : ℤ) = (m : ℤ))
+    (hjac : ∀ p', p' ∣ m → Nat.Prime p' → jacobiSym (-2 * ↑q) ↑p' = 1) :
+    Even (padicValNat p (2 * v)) := by
+  by_cases hp2 : p = 2
+  · aesop
+  · by_cases hpv : (p : ℤ) ∣ v
+    · by_cases hpm : (p : ℕ) ∣ m
+      · have := p_mod4_of_dvd_v_dvd_m p q b h x y R v m hp hp3 hm_sq hv_def hbqm hRv hpv hpm (hjac p hpm hp)
+        aesop
+      · have h_contradiction : ¬ Even (padicValInt p v) → False := by
+          intro h_odd
+          have := p_mod4_eq1_of_dvd_v_not_dvd_m p q b h x y v R m hp hp2 hv_def hbqm hRv
+            (by exact h_odd) (by exact_mod_cast hpm)
+          cases this.symm.trans hp3
+        simp_all +decide [padicValNat.mul, hv_pos.ne']
+        simp_all [← hv_def]
+        rw [padicValNat.eq_zero_of_not_dvd] <;> simp_all +decide [Nat.prime_dvd_prime_iff_eq]
+    · rw [padicValNat.eq_zero_of_not_dvd] <;> norm_num
+      exact fun h => hpv <| Int.natCast_dvd_natCast.mpr <| hp.dvd_mul.mp h |> Or.resolve_left <| by
+        intro t
+        have := Nat.le_of_dvd (by positivity) t
+        interval_cases p <;> trivial
+
+lemma two_v_sum_two_squares (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ) (m : ℕ)
+    (hm_sq : Squarefree m)
+    (hv_pos : 0 < v)
+    (hv_def : (v : ℤ) = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
+    (hRv : R ^ 2 + 2 * (v : ℤ) = (m : ℤ))
+    (hjac : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * ↑q) ↑p = 1) :
+    ∃ a b : ℕ, 2 * v = a ^ 2 + b ^ 2 := by
+  rw [Nat.eq_sq_add_sq_iff]
+  intro p hp hp3
+  exact even_padicVal_of_mod4_eq3 p q b h x y R v m hp hp3 hm_sq hv_pos hv_def hbqm hRv hjac
+
+lemma sum_three_from_Rsq_two_v (R : ℤ) (v : ℕ) (m : ℕ)
+    (hRv : R ^ 2 + 2 * (v : ℤ) = (m : ℤ))
+    (hab : ∃ a b : ℕ, 2 * v = a ^ 2 + b ^ 2) :
+    ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2 := by
+  grind +qlia
+
+
+/-- Main theorem: m ≡ 3 (mod 8) squarefree ⟹ sum of three integer squares -/
+theorem sum_three_squares_of_mod8_eq3 (m : ℕ) (hm : Squarefree m)
+    (hm_pos : 0 < m) (hmod : m % 8 = 3) :
+    ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2 := by
+  obtain ⟨q, b, h, x, y, R, v, hq_prime, hq_mod, hjac, hbqm, hv_def, hRv, hv_pos⟩ :=
+    exists_R_v_of_mod8_eq3 m hm hm_pos hmod
+  have h2v := two_v_sum_two_squares q b h x y R v m hm hv_pos hv_def hbqm hRv hjac
+  exact sum_three_from_Rsq_two_v R v m hRv h2v
+/-- The final theorem -/
 theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m)
     (hm_mod : m % 8 = 3) : IsSumOfThreeSquares m := by
   obtain ⟨a, b, c, habc⟩ := sum_three_squares_of_mod8_eq3 m hm_sq hm_pos hm_mod
@@ -705,3 +1022,4 @@ theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m
         = a ^ 2 + b ^ 2 + c ^ 2 := by
           norm_num [Int.natCast_natAbs, sq_abs]
     _ = (m : ℤ) := by simpa using habc.symm
+end
