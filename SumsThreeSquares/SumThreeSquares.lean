@@ -1,5 +1,5 @@
 import Mathlib
-import SumsThreeSquares.minkowskiconvex
+import SumsThreeSquares.MinkowskiConvex
 
 
 open scoped BigOperators
@@ -132,7 +132,26 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
 /-
 If $m \equiv 3 \pmod 8$ is squarefree, $q \equiv 1 \pmod 4$ is prime, and $(-2q/p) = 1$ for all $p|m$, then $(-m/q) = 1$.
 -/
-lemma jacobi_neg_m_q (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q) (hq_mod : q % 4 = 1)
+lemma exists_odd_sq_mod_prime_of_jacobi_eq_one (m q : ℕ) (hq_prime : Nat.Prime q) (hq_mod : q % 4 = 1)
+    (h_jacobi : jacobiSym (-m) q = 1) :
+    ∃ b : ℤ, b ^ 2 ≡ -↑m [ZMOD ↑q] ∧ b % 2 = 1 := by
+  obtain ⟨b₀, hb₀⟩ : ∃ b₀ : ℤ, b₀ ^ 2 ≡ -(m : ℤ) [ZMOD q] := by
+    haveI := Fact.mk hq_prime
+    norm_num [← ZMod.intCast_eq_intCast_iff, jacobiSym] at *
+    norm_num [Nat.primeFactorsList_prime hq_prime] at h_jacobi
+    rw [legendreSym.eq_one_iff] at h_jacobi
+    · obtain ⟨x, hx⟩ := h_jacobi
+      exact ⟨x.val, by simpa [sq, ← ZMod.intCast_eq_intCast_iff] using hx.symm⟩
+    · rw [legendreSym] at h_jacobi
+      aesop
+  by_cases hb₀_odd : b₀ % 2 = 1
+  · exact ⟨b₀, hb₀, hb₀_odd⟩
+  · refine ⟨b₀ + q, ?_, ?_⟩ <;> simp_all +decide [Int.ModEq, ← even_iff_two_dvd, parity_simps]
+    · simp +decide [← hb₀, ← ZMod.intCast_eq_intCast_iff']
+    · norm_num [Int.add_emod, Int.even_iff.mp hb₀_odd,
+        show (q : ℤ) % 2 = 1 from mod_cast hq_prime.eq_two_or_odd.resolve_left (by aesop_cat)]
+
+lemma jacobi_neg_m_q (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_mod : q % 4 = 1)
     (h_jacobi : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1) :
     jacobiSym (-m) q = 1 := by
   -- We need to show that $(q/m) = (-2/m)$.
@@ -153,13 +172,8 @@ lemma jacobi_neg_m_q (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Pr
     rw [ Int.mul_eq_one_iff_eq_one_or_neg_one ] at h_jacobi_qm ; aesop;
   -- Since $(-m/q) = (q/m)$ and $(q/m) = (-2/m)$, we have $(-m/q) = (-2/m)$.
   have h_jacobi_neg_mq : jacobiSym (-m) q = jacobiSym q m := by
-    rw [ jacobiSym.quadratic_reciprocity ] ;
-    simp_all only [Int.reduceNeg, neg_mul]
-    · rw [ jacobiSym.neg ] ; norm_num [ Nat.even_div, hq_mod ] ; ring_nf;
-      · erw [ show ( q : ZMod 4 ) = 1 by erw [ ZMod.natCast_eq_natCast_iff ] ; norm_num [ Nat.ModEq, hq_mod ] ] ; norm_num;
-      · exact hq_prime.odd_of_ne_two <| by aesop_cat;
-    · exact hq_prime.odd_of_ne_two <| by aesop_cat;
-    · exact Nat.odd_iff.mpr ( by omega );
+    rw [jacobiSym.neg _ (Nat.odd_iff.mpr (by omega)), ZMod.χ₄_nat_one_mod_four hq_mod, one_mul]
+    exact jacobiSym.quadratic_reciprocity_one_mod_four' (Nat.odd_iff.mpr (by omega)) hq_mod
   rw [ h_jacobi_neg_mq, h_jacobi_qm, jacobiSym.mod_right ] ; norm_num [ hm_mod ];
   exact Nat.odd_iff.mpr ( by omega )
 
@@ -170,27 +184,16 @@ lemma exists_b_h (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime 
     (h_jacobi : jacobiSym (-m) q = 1) :
     ∃ b h : ℤ, b % 2 = 1 ∧ b^2 - 4 * q * h = -m := by
   -- Since $(-m/q) = 1$, there exists an integer $b$ such that $b^2 \equiv -m \pmod{q}$.
-  obtain ⟨b, hb⟩ : ∃ b : ℤ, b ^ 2 ≡ -↑m [ZMOD ↑q] ∧ b % 2 = 1 := by
-    -- Since $(-m/q) = 1$, there exists an integer $b_0$ such that $b_0^2 \equiv -m \pmod q$.
-    obtain ⟨b₀, hb₀⟩ : ∃ b₀ : ℤ, b₀ ^ 2 ≡ -(m : ℤ) [ZMOD q] := by
-      haveI := Fact.mk hq_prime; norm_num [ ← ZMod.intCast_eq_intCast_iff, jacobiSym ] at *;
-      norm_num [ Nat.primeFactorsList_prime hq_prime ] at h_jacobi;
-      rw [ legendreSym.eq_one_iff ] at h_jacobi;
-      · obtain ⟨ x, hx ⟩ := h_jacobi; use x.val; simpa [ sq, ← ZMod.intCast_eq_intCast_iff ] using hx.symm;
-      · rw [ legendreSym ] at h_jacobi ; aesop;
-    by_cases hb₀_odd : b₀ % 2 = 1;
-    · use b₀;
-    · refine' ⟨ b₀ + q, _, _ ⟩ <;> simp_all +decide [ Int.ModEq, ← even_iff_two_dvd, parity_simps ];
-      · simp +decide [ ← hb₀, ← ZMod.intCast_eq_intCast_iff' ];
-      · norm_num [ Int.add_emod, Int.even_iff.mp hb₀_odd, show ( q : ℤ ) % 2 = 1 from mod_cast hq_prime.eq_two_or_odd.resolve_left ( by aesop_cat ) ];
+  obtain ⟨b, hb_mod_q, hb_odd⟩ :=
+    exists_odd_sq_mod_prime_of_jacobi_eq_one m q hq_prime hq_mod h_jacobi
   -- We need $b^2 \equiv -m \pmod{4q}$.
   have hb_mod : b ^ 2 ≡ -↑m [ZMOD (4 * ↑q : ℤ)] := by
     -- Since $q$ is odd, $4$ and $q$ are coprime. We can use the Chinese Remainder Theorem to combine the congruences $b^2 \equiv -m \pmod q$ and $b^2 \equiv -m \pmod 4$.
     have h_crt : b ^ 2 ≡ -↑m [ZMOD ↑q] ∧ b ^ 2 ≡ -↑m [ZMOD 4] := by
-      exact ⟨ hb.1, by rw [ ← Int.emod_add_mul_ediv b 2, hb.2 ] ; ring_nf; norm_num [ Int.ModEq, Int.add_emod, Int.sub_emod, Int.mul_emod ] ; omega ⟩;
+      exact ⟨ hb_mod_q, by rw [ ← Int.emod_add_mul_ediv b 2, hb_odd ] ; ring_nf; norm_num [ Int.ModEq, Int.add_emod, Int.sub_emod, Int.mul_emod ] ; omega ⟩;
     rw [ ← Int.modEq_and_modEq_iff_modEq_mul ] ; tauto;
     exact Nat.Coprime.symm ( hq_prime.coprime_iff_not_dvd.mpr fun h => by have := Nat.le_of_dvd ( by decide ) h; interval_cases q <;> trivial );
-  exact ⟨ b, ( b^2 - ( -m ) ) / ( 4 * q ), hb.2, by linarith [ Int.ediv_mul_cancel ( show ( 4 * q : ℤ ) ∣ b^2 - ( -m ) from hb_mod.symm.dvd ) ] ⟩
+  exact ⟨ b, ( b^2 - ( -m ) ) / ( 4 * q ), hb_odd, by linarith [ Int.ediv_mul_cancel ( show ( 4 * q : ℤ ) ∣ b^2 - ( -m ) from hb_mod.symm.dvd ) ] ⟩
 
 /-
 There exists an integer $t$ such that $2q t^2 \equiv -1 \pmod m$.
@@ -659,7 +662,7 @@ lemma exists_R_v_of_mod8_eq3 (m : ℕ) (hm : Squarefree m) (hm_pos : 0 < m) (hmo
       R ^ 2 + 2 * (v : ℤ) = (m : ℤ) ∧
       0 < v := by
   obtain ⟨q, hq_prime, hq_mod, hjac⟩ := exists_prime_aux m hm hmod
-  obtain ⟨b, h, _, hbqm⟩ := exists_b_h m q hmod hq_prime hq_mod (jacobi_neg_m_q m q hmod hq_prime hq_mod hjac)
+  obtain ⟨b, h, _, hbqm⟩ := exists_b_h m q hmod hq_prime hq_mod (jacobi_neg_m_q m q hmod hq_mod hjac)
   obtain ⟨t, hqt⟩ := exists_t m q hm hmod hq_prime hjac
   have hqt' : t ^ 2 * 2 * q ≡ -1 [ZMOD m] := by
     simpa [mul_assoc, mul_comm, mul_left_comm] using hqt

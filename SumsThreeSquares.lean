@@ -1,1 +1,1 @@
-import SumsThreeSquares.Example
+import SumsThreeSquares.SumThreeSquares
