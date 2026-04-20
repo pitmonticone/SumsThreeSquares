@@ -1,4 +1,5 @@
-import Mathlib
+import Mathlib.MeasureTheory.Group.GeometryOfNumbers
+import Mathlib.MeasureTheory.Measure.Haar.InnerProductSpace
 
 open MeasureTheory Module Submodule
 
