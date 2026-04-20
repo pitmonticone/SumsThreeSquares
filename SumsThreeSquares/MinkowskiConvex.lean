@@ -20,8 +20,7 @@ theorem classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
   let E := EuclideanSpace ℝ (Fin n)
   let L : AddSubgroup E := {
     carrier := {x : E | ∀ i, ∃ m : ℤ, (m : ℝ) = x i}
-    zero_mem' := fun i => ⟨0, by
-      simpa using (show ((0 : E) i) = (0 : ℝ) by rfl).symm⟩
+    zero_mem' := fun i => ⟨0, by simp⟩
     add_mem' := by
       intro a b ha hb i
       obtain ⟨ma, hma⟩ := ha i; obtain ⟨mb, hmb⟩ := hb i
