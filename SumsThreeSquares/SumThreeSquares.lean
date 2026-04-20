@@ -279,11 +279,17 @@ lemma det_linear_map_M_ne_zero (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q)
   positivity
 
 noncomputable abbrev linear_map_M_euclidean (m q : ℕ) (t b : ℤ) : (EuclideanSpace ℝ (Fin 3)) →ₗ[ℝ] (EuclideanSpace ℝ (Fin 3)) :=
-  linear_map_M m q t b
+  (EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearMap ∘ₗ
+    (linear_map_M m q t b) ∘ₗ (EuclideanSpace.equiv (Fin 3) ℝ).toLinearMap
 
 lemma det_linear_map_M_euclidean (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
     LinearMap.det (linear_map_M_euclidean m q t b) = m * Real.sqrt m := by
-  simpa [linear_map_M_euclidean] using det_linear_map_M m q t b hm hq
+  have hrw : linear_map_M_euclidean m q t b =
+      ((EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearEquiv :
+        (Fin 3 → ℝ) ≃ₗ[ℝ] EuclideanSpace ℝ (Fin 3)).toLinearMap ∘ₗ (linear_map_M m q t b) ∘ₗ
+        ((EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearEquiv.symm).toLinearMap := rfl
+  rw [hrw, LinearMap.det_conj]
+  exact det_linear_map_M m q t b hm hq
 
 /-
 The volume of the preimage of the ball is $\frac{4}{3}\pi (2m)^{3/2} / m^{3/2}$.
@@ -416,6 +422,9 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
             ring_nf
             aesop ( simp_config := { decide := Bool.true } )
       rw [ Real.sq_sqrt <| by positivity ]
+      have heq : ∀ i, (linear_map_M m q t b) ((EuclideanSpace.equiv (Fin 3) ℝ) x) i =
+          ((linear_map_M_euclidean m q t b) x).ofLp i := fun _ => rfl
+      simp only [heq]
       rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ]
       ring_nf
       norm_num [ ne_of_gt, hq, hm ]
@@ -873,7 +882,8 @@ lemma two_v_sum_two_squares (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ) (m : �
     ∃ a b : ℕ, 2 * v = a ^ 2 + b ^ 2 := by
   rw [Nat.eq_sq_add_sq_iff]
   intro p hp hp3
-  exact even_padicVal_of_mod4_eq3 p q b h x y R v m hp hp3 hm_sq hv_pos hv_def hbqm hRv hjac
+  exact even_padicVal_of_mod4_eq3 p q b h x y R v m (Nat.prime_of_mem_primeFactors hp) hp3
+    hm_sq hv_pos hv_def hbqm hRv hjac
 
 
 /-- The final theorem -/
