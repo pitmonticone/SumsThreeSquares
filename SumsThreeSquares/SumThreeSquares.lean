@@ -104,7 +104,7 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
   obtain ⟨q, hq⟩ : ∃ q : ℕ, Nat.Prime q ∧ q % (4 * m) = a % (4 * m) ∧ q % 4 = 1 := by
     -- By Dirichlet's theorem on arithmetic progressions, there are infinitely many primes in the residue class $a \pmod{4m}$.
     have h_dirichlet : Set.Infinite {q : ℕ | Nat.Prime q ∧ q % (4 * m) = a % (4 * m)} := by
-      have := @Nat.setOf_prime_and_eq_mod_infinite;
+      have := @Nat.infinite_setOf_prime_and_eq_mod;
       specialize @this ( 4 * m ) ?_ ( a : ZMod ( 4 * m ) ) ?_ <;>
       simp_all only [Int.reduceNeg, neg_mul]
       · exact ⟨ by aesop_cat ⟩;
@@ -216,14 +216,14 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
       obtain ⟨inv_2q, hinv_2q⟩ : ∃ inv_2q : ℤ, 2 * q * inv_2q ≡ 1 [ZMOD p] := by
         have h_inv : Int.gcd (2 * q : ℤ) p = 1 := by
           refine' Nat.Coprime.mul_left _ _;
-          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast, Nat.coprime_two_left]
+          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast, Nat.coprime_two_left]
             obtain ⟨left, right⟩ := hp
             obtain ⟨left_1, right⟩ := right
             apply Odd.of_dvd_nat _ left_1
             rw [Nat.odd_iff]
             omega
           · rw [ Nat.coprime_primes ] <;>
-            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast]
+            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast]
             obtain ⟨left, right⟩ := hp
             obtain ⟨left_1, right⟩ := right
             apply Aesop.BuiltinRules.not_intro
@@ -481,7 +481,7 @@ private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
           ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
     have h0 : (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m ≡ 0 [ZMOD m] :=
       Int.modEq_zero_iff_dvd.mpr ⟨t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2, by ring⟩
-    simpa using Int.ModEq.add (Int.ModEq.refl _) h0
+    simpa only [add_zero] using (Int.ModEq.refl _).add h0
   have hqt_xy : (t ^ 2 * 2 * ↑q) * (x * b * y * 2) ≡ (-1) * (x * b * y * 2) [ZMOD m] := by
     simpa using hqt.mul_right (x * b * y * 2)
   have hqt_x2 : (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) ≡ (-1) * (↑q * x ^ 2 * 2) [ZMOD m] := by
