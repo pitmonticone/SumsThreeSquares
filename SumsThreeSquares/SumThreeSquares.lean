@@ -584,6 +584,13 @@ private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
             by ring⟩
     _ = 0 := by ring
 
+/-- A real sum of three squares is zero iff each square is zero. -/
+private lemma sq_eq_zero_of_sum_three_sq (a b c : ℝ) (h : a ^ 2 + b ^ 2 + c ^ 2 = 0) :
+    a ^ 2 = 0 ∧ b ^ 2 = 0 ∧ c ^ 2 = 0 :=
+  ⟨by nlinarith [sq_nonneg a, sq_nonneg b, sq_nonneg c],
+   by nlinarith [sq_nonneg a, sq_nonneg b, sq_nonneg c],
+   by nlinarith [sq_nonneg a, sq_nonneg b, sq_nonneg c]⟩
+
 private lemma xyz_zero_of_sum_sq_eq_zero (m q : ℕ) (t b x y z : ℤ)
     (hm : 0 < m) (hq : 0 < q)
     (hsum0 :
@@ -591,37 +598,25 @@ private lemma xyz_zero_of_sum_sq_eq_zero (m q : ℕ) (t b x y z : ℤ)
         (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
         (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0) :
     x = 0 ∧ y = 0 ∧ z = 0 := by
-  have hT0sq : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-    nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
-      sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
-  have hT0 : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
-    nlinarith [hT0sq]
-  have hy0R : (y : ℝ) = 0 := by
+  obtain ⟨hR0sq, hS0sq, hT0sq⟩ := sq_eq_zero_of_sum_three_sq _ _ _ hsum0
+  have hy0 : y = 0 := by
+    have hT0 : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by nlinarith [hT0sq]
     have hcoef : (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) : ℝ) ≠ 0 := by positivity
-    exact (mul_eq_zero.mp hT0).resolve_left hcoef
-  have hy0 : y = 0 := by exact_mod_cast hy0R
-  have hS0sq : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-    nlinarith [sq_nonneg (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ),
-      sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
-  have hS0 : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y : ℝ) = 0 := by
-    nlinarith [hS0sq]
-  have hx0R : (x : ℝ) = 0 := by
+    exact_mod_cast (mul_eq_zero.mp hT0).resolve_left hcoef
+  have hx0 : x = 0 := by
+    have hS0 : (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y : ℝ)
+        = 0 := by nlinarith [hS0sq]
     have hcoef : (Real.sqrt 2 * Real.sqrt q : ℝ) ≠ 0 := by positivity
     have hlin : (Real.sqrt 2 * Real.sqrt q : ℝ) * x = 0 := by
-      simpa [hy0R] using hS0
-    exact (mul_eq_zero.mp hlin).resolve_left hcoef
-  have hx0 : x = 0 := by exact_mod_cast hx0R
-  have hR0sq : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 = 0 := by
-    nlinarith [sq_nonneg (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y),
-      sq_nonneg (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y), hsum0]
-  have hR0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) = 0 := by
-    nlinarith [hR0sq]
-  have hz0R : (z : ℝ) = 0 := by
+      simpa [show (y : ℝ) = 0 from by exact_mod_cast hy0] using hS0
+    exact_mod_cast (mul_eq_zero.mp hlin).resolve_left hcoef
+  have hz0 : z = 0 := by
+    have hR0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) = 0 := by nlinarith [hR0sq]
     have hmne : (m : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hm)
     have hlin : (m : ℝ) * z = 0 := by
-      simpa [hx0R, hy0R] using hR0
-    exact (mul_eq_zero.mp hlin).resolve_left hmne
-  have hz0 : z = 0 := by exact_mod_cast hz0R
+      simpa [show (x : ℝ) = 0 from by exact_mod_cast hx0,
+        show (y : ℝ) = 0 from by exact_mod_cast hy0] using hR0
+    exact_mod_cast (mul_eq_zero.mp hlin).resolve_left hmne
   exact ⟨hx0, hy0, hz0⟩
 
 
