@@ -867,14 +867,13 @@ lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m :
       rw [← Int.dvd_add_left (dvd_mul_of_dvd_right hpv _)]
       exact hRv.symm ▸ Int.natCast_dvd_natCast.mpr hpm
   have hp_2qx_by : (p : ℤ) ∣ (2 * q * x + b * y) := by
-    have hp_2qx_by : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
-      convert hpv.mul_left (4 * q) using 1
-      rw [hv]
-      linear_combination' hbqm * y ^ 2
-    haveI := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
-    obtain ⟨k, hk⟩ := hpm
-    simp_all
+    have h_sum : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
+      rw [← four_q_v_eq_sq_plus_m_y_sq hv hbqm]
+      exact hpv.mul_left (4 * q)
+    have hpm_int : (p : ℤ) ∣ (m : ℤ) := Int.natCast_dvd_natCast.mpr hpm
+    have h_sq : (p : ℤ) ∣ (2 * q * x + b * y) ^ 2 :=
+      (Int.dvd_add_left (hpm_int.mul_right _)).mp h_sum
+    exact Int.Prime.dvd_pow' hp h_sq
   have h_y_sq_mod_p : y ^ 2 ≡ 2 * q [ZMOD p] := by
     have h_div_p : (m / p : ℤ) * y ^ 2 ≡ (m / p : ℤ) * (2 * q) [ZMOD p] := by
       have h_div_p : (4 * q * v : ℤ) ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
