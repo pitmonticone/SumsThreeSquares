@@ -490,8 +490,6 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
       norm_num [ Fin.sum_univ_three ] at *
       linarith!
 
-#exit
-
 private lemma rst_expand_eq (m q : ℕ) (t b h x y z : ℤ) (hq : 0 < q)
     (hbqm : b ^ 2 - 4 * q * h = -m) :
     (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
@@ -626,77 +624,66 @@ private lemma xyz_zero_of_sum_sq_eq_zero (m q : ℕ) (t b x y z : ℤ)
 
 
 
+/-- The integer binary quadratic form `q·x² + b·x·y + h·y²` is nonnegative when its
+discriminant is `-m < 0` (i.e. negative definite `-Δ`) and `q > 0`. -/
+private lemma quadform_nonneg {q : ℕ} {b h : ℤ} {m : ℕ} (hq : 0 < q)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) (x y : ℤ) :
+    0 ≤ (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 := by
+  have hm_nn : (0 : ℤ) ≤ (m : ℤ) := Int.natCast_nonneg m
+  nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), sq_nonneg (y : ℤ), hbqm]
+
+/-- A nonnegative integer `n ≡ 0 (mod m)` with `n < 2m` is either `0` or `m`. -/
+private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < m)
+    {n : ℤ} (h_nn : 0 ≤ n) (h_mod : n ≡ 0 [ZMOD m]) (h_lt : n < 2 * m) :
+    n = 0 ∨ n = m := by
+  obtain ⟨k, hk⟩ := Int.modEq_zero_iff_dvd.mp h_mod
+  have : 0 ≤ k := by nlinarith
+  have : k < 2 := by nlinarith
+  interval_cases k
+  · left; linarith
+  · right; linarith
+
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
     (hqt : t ^ 2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
     ∃ (x y : ℤ) (R : ℤ) (v : ℕ),
       (v : ℤ) = q * x ^ 2 + b * x * y + h * y ^ 2 ∧
       R ^ 2 + 2 * (v : ℤ) = (m : ℤ) ∧
       0 < v := by
-  have h_exists : ∃ x y z : ℤ, (x, y, z) ≠ (0, 0, 0) ∧
+  obtain ⟨x, y, z, hne, hlt⟩ :
+      ∃ x y z : ℤ, (x, y, z) ≠ (0, 0, 0) ∧
       (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
-      (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-      (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 < 2 * m := by
+        (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
+        (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 < 2 * m := by
     simpa using exists_lattice_xyz_lt_two_m m q t b hm hq
-  obtain ⟨ x, y, z, hne, hlt ⟩ := h_exists;
-  -- From the inequality $R^2 + 2v < 2m$, we know that $R^2 + 2v$ must be either $0$ or $m$ since $m$ is a positive integer.
-  have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) = 0 ∨ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) = m := by
-    have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) ≡ 0 [ZMOD m] := by
-      exact rst_modEq_zero m q t b h x y z hqt hbqm
-    have h_cases : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 + 2 * (q * x ^ 2 + b * x * y + h * y ^ 2) < 2 * m := by
-      have h_expand : (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
+  have hqf_nn : 0 ≤ (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 := quadform_nonneg hq hbqm x y
+  -- `R² + 2·qf` is nonneg, `< 2m`, and `≡ 0 (mod m)`, hence `∈ {0, m}`.
+  have h_lt : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
+      2 * ((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2) < 2 * m := by
+    have h_expand : ((2 * t * q * x + t * b * y + m * z : ℤ) : ℝ) ^ 2 +
+        2 * (((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 : ℤ) : ℝ) =
+        (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
           (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-          (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 =
-          (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
-          2 * (q * x ^ 2 + b * x * y + h * y ^ 2) := by
-        calc
-          (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
-              (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
-              (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2
-              = (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
-                (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-                (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 := by
-                  simp [mul_assoc, mul_left_comm, mul_comm]
-          _ = (2 * t * q * x + t * b * y + m * z : ℝ) ^ 2 +
-              2 * (q * x ^ 2 + b * x * y + h * y ^ 2) :=
-                rst_expand_eq m q t b h x y z (by positivity) (by simpa using hbqm)
-      exact_mod_cast h_expand ▸ hlt;
-    obtain ⟨ k, hk ⟩ := Int.modEq_zero_iff_dvd.mp ‹_›;
-    have hquad_nonneg : (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 ≥ 0 := by
-      nlinarith [sq_nonneg (2 * q * x + b * y)]
-    have hexpr_nonneg : 0 ≤ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
-        2 * (q * x ^ 2 + b * x * y + h * y ^ 2) := by
-      nlinarith [sq_nonneg (2 * t * q * x + t * b * y + m * z), hquad_nonneg]
-    have hk_nonneg : 0 ≤ k := by
-      have hm_nonneg : (0 : ℤ) ≤ m := by exact_mod_cast Nat.zero_le m
-      nlinarith [hk, hexpr_nonneg, hm_nonneg]
-    have hk_lt_two : k < 2 := by
-      have hm_pos' : (0 : ℤ) < m := by exact_mod_cast hm
-      nlinarith [hk, h_cases, hm_pos']
-    have hk_zero_or_one : k = 0 ∨ k = 1 := by omega
-    rcases hk_zero_or_one with rfl | rfl
-    · left
-      nlinarith [hk]
-    · right
-      nlinarith [hk]
-  cases' h_cases with h_case1 h_case2;
-  · -- If $R^2 + 2v = 0$, then $x = y = z = 0$, contradicting $(x, y, z) \neq (0, 0, 0)$.
-    have h_contra : x = 0 ∧ y = 0 ∧ z = 0 := by
-      apply xyz_zero_of_sum_sq_eq_zero m q t b x y z hm hq
-      have hsum0 :
-          (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-            (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-            (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
-        calc
-          (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-              (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
-              (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2
-              = (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
-                2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) :=
-                  rst_expand_eq m q t b h x y z hq (by simpa using hbqm)
-          _ = 0 := by
-                simpa using congr_arg ((↑) : ℤ → ℝ) h_case1
-      exact hsum0
-    aesop;
+          (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 := by
+      push_cast
+      rw [← rst_expand_eq m q t b h x y z hq (by simpa using hbqm)]
+      simp [mul_assoc, mul_left_comm, mul_comm]
+    exact_mod_cast h_expand ▸ hlt
+  have h_mod : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
+      2 * ((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2) ≡ 0 [ZMOD m] :=
+    rst_modEq_zero m q t b h x y z hqt hbqm
+  have h_nn : 0 ≤ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
+      2 * ((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2) := by positivity
+  have h_cases := eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul
+    (by exact_mod_cast hm : (0 : ℤ) < m) h_nn h_mod h_lt
+  rcases h_cases with h_case1 | h_case2
+  · -- `R² + 2v = 0` forces `x = y = z = 0`, contradicting `(x, y, z) ≠ (0, 0, 0)`.
+    have hsum0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
+        (Real.sqrt 2 * Real.sqrt q * x + (b : ℝ) / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 +
+        (Real.sqrt m / (Real.sqrt 2 * Real.sqrt q) * y) ^ 2 = 0 := by
+      rw [rst_expand_eq m q t b h x y z hq (by simpa using hbqm)]
+      exact_mod_cast h_case1
+    obtain ⟨rfl, rfl, rfl⟩ := xyz_zero_of_sum_sq_eq_zero m q t b x y z hm hq hsum0
+    exact absurd rfl hne
   · refine' ⟨ x, y, 2 * t * q * x + t * b * y + m * z, Int.toNat ( q * x ^ 2 + b * x * y + h * y ^ 2 ), _, _, _ ⟩ <;> norm_num;
     · nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
     · rw [ max_eq_left ];
@@ -713,6 +700,9 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
       rcases m with ( _ | _ | m ) <;> norm_num at *;
       · exact absurd ( congr_arg ( · % 4 ) hbqm ) ( by norm_num [ sq, Int.add_emod, Int.sub_emod, Int.mul_emod ] ; have := Int.emod_nonneg b four_pos.ne'; have := Int.emod_lt_of_pos b four_pos; interval_cases b % 4 <;> trivial );
       · nlinarith [ show z ^ 2 * ( m + 1 + 1 ) = 1 by nlinarith ]
+
+#exit
+
 /-- There exist q, b, h, t, x, y, z yielding R² + 2v = m with v > 0 -/
 lemma exists_R_v_of_mod8_eq3 (m : ℕ) (hm : Squarefree m) (hm_pos : 0 < m) (hmod : m % 8 = 3) :
     ∃ (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ),
