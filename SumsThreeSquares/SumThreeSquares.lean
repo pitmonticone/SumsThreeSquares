@@ -823,27 +823,23 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     rw [show (m - R ^ 2 : ℤ) = 2 * v by linarith]
     exact hpv.mul_left 2
   have h_jacobi_neg_m : jacobiSym (-m) p = 1 := by
-    by_cases hpq : (p : ℤ) ∣ q <;> simp_all
-    · have hb_sq_mod_p : b ^ 2 ≡ -m [ZMOD p] := by
-        exact Int.modEq_iff_dvd.mpr ⟨-4 * h * hpq.choose, by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
-      haveI := Fact.mk hp
-      simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
-      simp_all +decide [Nat.primeFactorsList_prime hp]
-      rw [legendreSym.eq_one_iff] at *
-      · exact ⟨b, by simpa [sq] using hb_sq_mod_p.symm⟩
-      · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpm
-      · simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
-    · have h_jacobi_neg_m_odd : ¬ Even (padicValInt p ((2 * q * x + b * y) ^ 2 + m * y ^ 2)) := by
-        have h_jacobi_neg_m_odd : padicValInt p (4 * q * v) = padicValInt p v := by
-          haveI := Fact.mk hp
-          rw [padicValInt.mul, padicValInt.mul] <;> norm_num
-          · exact ⟨Or.inr <| mod_cast fun h => hp_odd <| by have := Nat.le_of_dvd (by decide) h; interval_cases p <;> trivial,
-              Or.inr <| Or.inr hpq⟩
-          · aesop
-          · aesop_cat
-          · aesop
-        grind
-      apply jacobi_neg_d_of_odd_padicVal p (2 * q * x + b * y) m y hp hp_odd hpm h_jacobi_neg_m_odd
+    by_cases hpq : (p : ℤ) ∣ q
+    · -- p | q: then b² - 4qh ≡ b² (mod p), and b² = -m + 4qh ≡ -m (mod p).
+      refine jacobiSym_eq_one_of_sq_modEq hp (by simpa using hpm) ?_
+      exact Int.modEq_iff_dvd.mpr
+        ⟨-4 * h * hpq.choose, by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
+    · -- p ∤ q: 4qv = (2qx+by)² + my² has the same padic val as v (odd), so jacobi is 1.
+      refine jacobi_neg_d_of_odd_padicVal p (2 * q * x + b * y) m y hp hp_odd hpm ?_
+      have h_eq : padicValInt p (4 * q * v) = padicValInt p v := by
+        haveI := Fact.mk hp
+        rw [padicValInt.mul, padicValInt.mul] <;> norm_num
+        · refine ⟨Or.inr <| mod_cast fun h => hp_odd ?_, Or.inr <| Or.inr hpq⟩
+          have := Nat.le_of_dvd (by decide) h; interval_cases p <;> trivial
+        · rintro rfl; exact hpv (by simp)
+        · aesop_cat
+        · rintro rfl; exact hpv (by simp)
+      rw [← four_q_v_eq_sq_plus_m_y_sq hv hbqm, h_eq]
+      exact hpv
   have h_jacobi_neg_1 : jacobiSym (-1) p = 1 := by
     have h_mul : jacobiSym (-m) p = jacobiSym (-1) p * jacobiSym m p := by
       simpa [neg_mul] using (jacobiSym.mul_left (-1) m p)
@@ -864,19 +860,17 @@ lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m :
     (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m)
     (hjac : jacobiSym (-2 * q) p = 1) :
     False := by
-  have hp_R : (p : ℤ) ∣ R := by
-    exact Int.Prime.dvd_pow' hp <| by
+  have hp_R : (p : ℤ) ∣ R :=
+    Int.Prime.dvd_pow' hp <| by
       rw [← Int.dvd_add_left (dvd_mul_of_dvd_right hpv _)]
       exact hRv.symm ▸ Int.natCast_dvd_natCast.mpr hpm
+  -- Use the completing-the-square identity: `4qv = (2qx+by)² + m·y²`.
+  have h_4qv := four_q_v_eq_sq_plus_m_y_sq hv hbqm
   have hp_2qx_by : (p : ℤ) ∣ (2 * q * x + b * y) := by
-    have hp_2qx_by : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
-      convert hpv.mul_left (4 * q) using 1
-      rw [hv]
-      linear_combination' hbqm * y ^ 2
-    haveI := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
-    obtain ⟨k, hk⟩ := hpm
-    simp_all
+    refine Int.Prime.dvd_pow' hp ?_
+    have : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := h_4qv ▸ hpv.mul_left _
+    have hpm_int : (p : ℤ) ∣ (m : ℤ) := Int.natCast_dvd_natCast.mpr hpm
+    exact (Int.dvd_add_right (hpm_int.mul_right _)).mp this
   have h_y_sq_mod_p : y ^ 2 ≡ 2 * q [ZMOD p] := by
     have h_div_p : (m / p : ℤ) * y ^ 2 ≡ (m / p : ℤ) * (2 * q) [ZMOD p] := by
       have h_div_p : (4 * q * v : ℤ) ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
@@ -902,13 +896,13 @@ lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m :
     norm_cast at *
     simp_all +decide [Nat.squarefree_iff_prime_squarefree]
   have h_jacobi_2q_p : jacobiSym (2 * q) p = 1 := by
-    haveI := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
-    simp_all +decide [Nat.primeFactorsList_prime hp]
-    rw [legendreSym.eq_one_iff]
-    · exact ⟨y, by simpa [sq, ← ZMod.intCast_eq_intCast_iff] using h_y_sq_mod_p.symm⟩
-    · intro H
-      simp_all +decide [legendreSym]
+    refine jacobiSym_eq_one_of_sq_modEq hp ?_ h_y_sq_mod_p.symm
+    -- p ∤ 2q: otherwise `jacobiSym (-2q) p = 0 ≠ 1`.
+    intro h
+    have hp_neg_2q : (p : ℤ) ∣ (-2 * q : ℤ) := by rw [show (-2 * q : ℤ) = -(2 * q) by ring]; exact h.neg_right
+    have h_zero : jacobiSym (-2 * q : ℤ) p = 0 :=
+      jacobiSym.eq_zero_iff.mpr ⟨by exact_mod_cast hp.one_lt.ne', hp_neg_2q⟩
+    omega
   haveI := Fact.mk hp
   simp_all +decide [jacobiSym.mul_left, ← ZMod.intCast_eq_intCast_iff]
   rw [jacobiSym.neg] at hjac
