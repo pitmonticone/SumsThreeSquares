@@ -25,109 +25,142 @@ There exists a prime $q$ such that $q \equiv 1 \pmod 4$ and $(-2q/p) = 1$ for al
 -/
 
 
+/-- For an odd prime `p`, there exists a natural number `a ≡ 1 (mod 4)` coprime to `p`
+with `-2 * a` a quadratic residue modulo `p`. Equivalently, since `-2` is a unit mod `p`,
+every residue class (including a quadratic residue and `≡ 1 (mod 4)` shift) is attainable. -/
+private lemma exists_residue_neg_two_qr_mod_odd_prime (p : ℕ) (hp : Nat.Prime p)
+    (hp_ne_two : p ≠ 2) :
+    ∃ a : ℕ, jacobiSym (-2 * a) p = 1 ∧ a % p ≠ 0 ∧ a % 4 = 1 := by
+  obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, jacobiSym (-2 * a_p) p = 1 ∧ a_p % p ≠ 0 := by
+    -- Pick the quadratic residue `1 (mod p)` and pull back through multiplication by `-2`.
+    have h_quad_res : ∃ x : ℕ, jacobiSym x p = 1 ∧ x % p ≠ 0 :=
+      ⟨1, by norm_num [jacobiSym], by norm_num [Nat.mod_eq_of_lt hp.two_le]⟩
+    obtain ⟨x, hx₁, hx₂⟩ := h_quad_res
+    obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, -2 * a_p ≡ x [ZMOD p] := by
+      have h_inv : ∃ y : ℤ, -2 * y ≡ 1 [ZMOD p] := by
+        have h_gcd : Int.gcd (-2 : ℤ) p = 1 :=
+          Nat.coprime_comm.mp ( hp.coprime_iff_not_dvd.mpr fun h => hp_ne_two <| by
+            have := Nat.le_of_dvd ( by decide ) h; interval_cases p <;> trivial )
+        norm_num +zetaDelta at *
+        have := Int.gcd_eq_gcd_ab 2 p
+        exact ⟨-Int.gcdA 2 p, Int.modEq_iff_dvd.mpr ⟨Int.gcdB 2 p, by linarith⟩⟩
+      obtain ⟨y, hy⟩ := h_inv
+      exact ⟨Int.toNat (y * x % p), by
+        rw [Int.toNat_of_nonneg (Int.emod_nonneg _ <| Nat.cast_ne_zero.mpr hp.ne_zero)]
+        simpa [← ZMod.intCast_eq_intCast_iff, mul_assoc] using hy.mul_right x⟩
+    refine ⟨a_p, ?_, ?_⟩
+    · rw [jacobiSym.mod_left] at *
+      rw [ha_p]; aesop
+    · intro h
+      haveI := Fact.mk hp
+      simp_all +decide [← ZMod.intCast_eq_intCast_iff]
+      simp_all +decide [← Nat.dvd_iff_mod_eq_zero, ← ZMod.natCast_eq_zero_iff]
+  -- Shift by a multiple of `p` to enforce `≡ 1 (mod 4)`.
+  obtain ⟨k, hk⟩ : ∃ k : ℕ, (a_p + k * p) % 4 = 1 := by
+    norm_num [Nat.add_mod, Nat.mul_mod]
+    have := Nat.mod_lt a_p zero_lt_four
+    have := Nat.mod_lt p zero_lt_four
+    interval_cases _ : a_p % 4 <;> interval_cases _ : p % 4 <;> simp_all +decide
+    all_goals (have := Nat.Prime.eq_two_or_odd hp
+               simp_all +decide [← Nat.mod_mod_of_dvd p (by decide : 2 ∣ 4)])
+    exacts [⟨1, rfl⟩, ⟨3, rfl⟩, ⟨0, rfl⟩, ⟨0, rfl⟩, ⟨3, rfl⟩, ⟨1, rfl⟩, ⟨2, rfl⟩, ⟨2, rfl⟩]
+  refine ⟨a_p + k * p, ?_, ?_, hk⟩ <;> simp_all +decide [Nat.add_mod, Nat.mul_mod]
+  have hring : (-(2 * ((a_p : ℤ) + k * p))) = -(2 * a_p) + (-(2 * k * p)) := by ring
+  rw [hring, jacobiSym.mod_left]
+  simp_all only [dvd_refl, Nat.mod_mod_of_dvd, Nat.mul_mod_mod, Nat.mod_mul_mod, Nat.add_mod_mod,
+    Nat.mod_add_mod, Int.add_neg_mul_emod_self_right]
+  obtain ⟨left, right⟩ := ha_p
+  rw [eq_comm, jacobiSym.mod_left] at *; aesop
+
+/-- Chinese Remainder Theorem over the prime factors of an odd natural number `m`,
+simultaneously achieving `≡ 1 (mod 4)`. Given per-prime residue data `a p`, we can find
+a single `c` satisfying all the congruences `c ≡ a p (mod p)` for `p ∈ primeFactors m`
+together with `c ≡ 1 (mod 4)`. -/
+private lemma exists_crt_primeFactors_and_mod4 {m : ℕ} (hm_odd : Odd m) (a : ℕ → ℕ) :
+    ∃ c : ℕ, (∀ p : ℕ, p ∣ m → Nat.Prime p → c ≡ a p [MOD p]) ∧ c ≡ 1 [MOD 4] := by
+  have h_crt_exists : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p ∧ p ∣ m) →
+      ∃ c : ℕ, (∀ p ∈ S, c ≡ a p [MOD p]) ∧ c ≡ 1 [MOD 4] := by
+    intro S hS
+    induction' S using Finset.induction with p S hpS ih
+    · aesop
+    obtain ⟨c, hc₁, hc₂⟩ := ih fun q hq => hS q (Finset.mem_insert_of_mem hq)
+    -- Combine the inductive solution with the new prime `p` using CRT over `4 * ∏ S`.
+    obtain ⟨x, hx⟩ : ∃ x : ℕ, x ≡ c [MOD 4 * Finset.prod S id] ∧ x ≡ a p [MOD p] := by
+      have h_cop : Nat.gcd (4 * Finset.prod S id) p = 1 := by
+        refine Nat.Coprime.mul_left ?_ ?_
+        · have := hS p (Finset.mem_insert_self _ _)
+          rcases this with ⟨hp₁, hp₂⟩
+          exact Nat.Coprime.pow_left 2 (Nat.prime_two.coprime_iff_not_dvd.mpr fun h => by
+            -- `p = 2` with `p ∣ m` would contradict `Odd m`.
+            have hm2 : m % 2 = 1 := Nat.odd_iff.mp hm_odd
+            have : 2 ∣ m := dvd_trans h hp₂
+            omega)
+        · exact Nat.Coprime.prod_left fun q hq => Nat.coprime_comm.mp <|
+            hS p (Finset.mem_insert_self _ _) |>.1.coprime_iff_not_dvd.mpr fun h => hpS <| by
+              have := Nat.prime_dvd_prime_iff_eq (hS p (Finset.mem_insert_self _ _) |>.1)
+                (hS q (Finset.mem_insert_of_mem hq) |>.1)
+              aesop
+      exact ⟨_, (Nat.chineseRemainder h_cop c (a p)).2⟩
+    refine ⟨x, ?_, ?_⟩
+    · intro q hq
+      rw [Finset.mem_insert] at hq
+      rcases hq with rfl | hq
+      · exact hx.2
+      · exact (hx.1.of_dvd (dvd_mul_of_dvd_right (Finset.dvd_prod_of_mem _ hq) _)).trans
+          (hc₁ q hq)
+    · exact (hx.1.of_dvd (dvd_mul_right _ _)).trans hc₂
+  specialize @h_crt_exists (Nat.primeFactors m)
+  aesop
+
 lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
     ∃ q : ℕ, Nat.Prime q ∧ q % 4 = 1 ∧ ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1 := by
-  -- By Dirichlet's theorem on arithmetic progressions, there exists a prime $q$ in the residue class $a \pmod{4m}$, where $a$ is chosen such that $(-2q/p) = 1$ for all primes $p$ dividing $m$.
-  obtain ⟨a, ha⟩ : ∃ a : ℕ, (∀ p : ℕ, p ∣ m → Nat.Prime p → jacobiSym (-2 * a) p = 1) ∧ a % 4 = 1 ∧ Nat.gcd a (4 * m) = 1 := by
-    -- For each prime $p$ dividing $m$, choose $a_p$ such that $(-2a_p/p) = 1$.
-    have ha_p : ∀ p : ℕ, p ∣ m → Nat.Prime p → ∃ a_p : ℕ, jacobiSym (-2 * a_p) p = 1 ∧ a_p % p ≠ 0 ∧ a_p % 4 = 1 := by
-      intro p hp hp_prime
-      obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, jacobiSym (-2 * a_p) p = 1 ∧ a_p % p ≠ 0 := by
-        by_cases hp_two : p = 2;
-        · simp_all +decide [ Nat.dvd_iff_mod_eq_zero ];
-          omega;
-        · -- Since $p$ is odd, we can choose $a_p$ such that $-2a_p$ is a quadratic residue modulo $p$.
-          obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, jacobiSym (-2 * a_p) p = 1 ∧ a_p % p ≠ 0 := by
-            have h_quad_res : ∃ x : ℕ, jacobiSym x p = 1 ∧ x % p ≠ 0 := by
-              exact ⟨ 1, by norm_num [ jacobiSym ], by norm_num [ Nat.mod_eq_of_lt hp_prime.two_le ] ⟩
-            obtain ⟨ x, hx₁, hx₂ ⟩ := h_quad_res;
-            -- Since $-2$ is invertible modulo $p$, we can choose $a_p$ such that $-2a_p \equiv x \pmod{p}$.
-            obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, -2 * a_p ≡ x [ZMOD p] := by
-              have h_inv : ∃ y : ℤ, -2 * y ≡ 1 [ZMOD p] := by
-                have h_inv : Int.gcd (-2 : ℤ) p = 1 := by
-                  exact Nat.coprime_comm.mp ( hp_prime.coprime_iff_not_dvd.mpr fun h => hp_two <| by have := Nat.le_of_dvd ( by decide ) h; interval_cases p <;> trivial );
-                norm_num +zetaDelta at *;
-                have := Int.gcd_eq_gcd_ab 2 p;
-                exact ⟨ -Int.gcdA 2 p, Int.modEq_iff_dvd.mpr ⟨ Int.gcdB 2 p, by linarith ⟩ ⟩;
-              obtain ⟨ y, hy ⟩ := h_inv;
-              exact ⟨ Int.toNat ( y * x % p ), by rw [ Int.toNat_of_nonneg ( Int.emod_nonneg _ <| Nat.cast_ne_zero.mpr hp_prime.ne_zero ) ] ; simpa [ ← ZMod.intCast_eq_intCast_iff, mul_assoc ] using hy.mul_right x ⟩;
-            refine' ⟨ a_p, _, _ ⟩;
-            · rw [ jacobiSym.mod_left ] at *;
-              rw [ ha_p ] ; aesop;
-            · intro h; haveI := Fact.mk hp_prime; simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ] ;
-              simp_all +decide [ ← Nat.dvd_iff_mod_eq_zero, ← ZMod.natCast_eq_zero_iff ];
-          use a_p;
-      -- Since $a_p \not\equiv 0 \pmod{p}$, we can choose $k$ such that $a_p + kp \equiv 1 \pmod{4}$.
-      obtain ⟨k, hk⟩ : ∃ k : ℕ, (a_p + k * p) % 4 = 1 := by
-        norm_num [ Nat.add_mod, Nat.mul_mod ];
-        have := Nat.mod_lt a_p zero_lt_four; have := Nat.mod_lt p zero_lt_four; interval_cases _ : a_p % 4 <;> interval_cases _ : p % 4 <;> simp_all +decide;
-        all_goals have := Nat.Prime.eq_two_or_odd hp_prime; simp_all +decide [ ← Nat.mod_mod_of_dvd p ( by decide : 2 ∣ 4 ) ];
-        any_goals omega;
-        exacts [ ⟨ 1, rfl ⟩, ⟨ 3, rfl ⟩, ⟨ 0, rfl ⟩, ⟨ 0, rfl ⟩, ⟨ 3, rfl ⟩, ⟨ 1, rfl ⟩, ⟨ 2, rfl ⟩, ⟨ 2, rfl ⟩ ];
-      refine' ⟨ a_p + k * p, _, _, hk ⟩ <;> simp_all +decide [ Nat.add_mod, Nat.mul_mod ];
-      rw [ show ( - ( 2 * ( a_p + k * p ) ) : ℤ ) = - ( 2 * a_p ) + ( - ( 2 * k * p ) ) by ring, jacobiSym.mod_left ] ;
-      simp_all only [dvd_refl, Nat.mod_mod_of_dvd, Nat.mul_mod_mod, Nat.mod_mul_mod, Nat.add_mod_mod, Nat.mod_add_mod,
-        Int.add_neg_mul_emod_self_right]
-      obtain ⟨left, right⟩ := ha_p
-      rw [ eq_comm, jacobiSym.mod_left ] at * ; aesop;
-    choose! a ha using ha_p;
-    -- By the Chinese Remainder Theorem, there exists an integer $a$ such that $a \equiv a_p \pmod{p}$ for each prime $p$ dividing $m$, and $a \equiv 1 \pmod{4}$.
-    obtain ⟨a_crt, ha_crt⟩ : ∃ a_crt : ℕ, (∀ p : ℕ, p ∣ m → Nat.Prime p → a_crt ≡ a p [MOD p]) ∧ a_crt ≡ 1 [MOD 4] := by
-      have h_crt : ∃ a_crt : ℕ, (∀ p : ℕ, p ∣ m → Nat.Prime p → a_crt ≡ a p [MOD p]) ∧ (a_crt ≡ 1 [MOD 4]) := by
-        have h_crt_exists : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p ∧ p ∣ m) → ∃ a_crt : ℕ, (∀ p ∈ S, a_crt ≡ a p [MOD p]) ∧ (a_crt ≡ 1 [MOD 4]) := by
-          intro S hS; induction' S using Finset.induction with p S hS ih; aesop;
-          obtain ⟨ a_crt, ha_crt₁, ha_crt₂ ⟩ := ih fun q hq => hS q ( Finset.mem_insert_of_mem hq );
-          -- We need to find an integer $x$ such that $x \equiv a_crt \pmod{4 \prod_{q \in S} q}$ and $x \equiv a_p \pmod{p}$.
-          obtain ⟨x, hx⟩ : ∃ x : ℕ, x ≡ a_crt [MOD 4 * Finset.prod S id] ∧ x ≡ a p [MOD p] := by
-            have h_crt : Nat.gcd (4 * Finset.prod S id) p = 1 := by
-              refine' Nat.Coprime.mul_left _ _;
-              · have := hS p ( Finset.mem_insert_self _ _ ) ; rcases this with ⟨ hp₁, hp₂ ⟩ ; exact Nat.Coprime.pow_left 2 ( Nat.prime_two.coprime_iff_not_dvd.mpr fun h => by have := Nat.mod_eq_zero_of_dvd h; have := Nat.mod_eq_zero_of_dvd ( dvd_trans h hp₂ ) ; omega ) ;
-              · exact Nat.Coprime.prod_left fun q hq => Nat.coprime_comm.mp <| hS p ( Finset.mem_insert_self _ _ ) |>.1.coprime_iff_not_dvd.mpr fun h => ‹p ∉ S› <| by have := Nat.prime_dvd_prime_iff_eq ( hS p ( Finset.mem_insert_self _ _ ) |>.1 ) ( hS q ( Finset.mem_insert_of_mem hq ) |>.1 ) ; aesop;
-            have := Nat.chineseRemainder h_crt;
-            exact ⟨ _, this a_crt ( a p ) |>.2 ⟩;
-          use x;
-          norm_num +zetaDelta at *;
-          exact ⟨ ⟨ hx.2, fun q hq => hx.1.of_dvd ( dvd_mul_of_dvd_right ( Finset.dvd_prod_of_mem _ hq ) _ ) |> Nat.ModEq.trans <| ha_crt₁ q hq ⟩, hx.1.of_dvd ( dvd_mul_right _ _ ) |> Nat.ModEq.trans <| ha_crt₂ ⟩
-        specialize @h_crt_exists ( Nat.primeFactors m ) ; aesop;
-      exact h_crt;
-    refine' ⟨ a_crt, _, _, _ ⟩;
-    · intro p hp hp_prime; specialize ha p hp hp_prime; specialize ha_crt; have := ha_crt.1 p hp hp_prime; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
-      haveI := Fact.mk hp_prime; simp_all +decide [jacobiSym ] ;
-      simp_all +decide [ Nat.primeFactorsList_prime hp_prime ];
-      simp_all +decide [ legendreSym ];
-    · exact ha_crt.2;
-    · refine' Nat.Coprime.mul_right _ _;
-      · exact ha_crt.2.gcd_eq.trans ( by norm_num );
-      · refine' Nat.coprime_of_dvd' _;
-        intro k hk hk₁ hk₂; have := ha_crt.1 k hk₂ hk; simp_all +decide [ Nat.ModEq, Nat.dvd_iff_mod_eq_zero ] ;
-  -- Since $a$ is coprime to $4m$, by Dirichlet's theorem on arithmetic progressions, there exists a prime $q$ in the residue class $a \pmod{4m}$.
-  obtain ⟨q, hq⟩ : ∃ q : ℕ, Nat.Prime q ∧ q % (4 * m) = a % (4 * m) ∧ q % 4 = 1 := by
-    -- By Dirichlet's theorem on arithmetic progressions, there are infinitely many primes in the residue class $a \pmod{4m}$.
-    have h_dirichlet : Set.Infinite {q : ℕ | Nat.Prime q ∧ q % (4 * m) = a % (4 * m)} := by
-      have := @Nat.infinite_setOf_prime_and_eq_mod;
-      specialize @this ( 4 * m ) ?_ ( a : ZMod ( 4 * m ) ) ?_ <;>
-      simp_all only [Int.reduceNeg, neg_mul]
-      · exact ⟨ by aesop_cat ⟩;
-      · obtain ⟨left, middle, right⟩ := ha
-        exact (ZMod.isUnit_iff_coprime a (4 * m)).mpr right;
-      · convert this using 1;
-        norm_num [ ← ZMod.natCast_eq_natCast_iff' ];
-    cases' h_dirichlet.exists_gt ( 4 * m ) with q hq ; use q ;
-    simp_all only [Int.reduceNeg, neg_mul, Set.mem_setOf_eq, true_and]
-    obtain ⟨left, right⟩ := ha
-    obtain ⟨left_1, right_1⟩ := hq
-    obtain ⟨left_2, right⟩ := right
-    obtain ⟨left_1, right_2⟩ := left_1
-    rw [ ← Nat.mod_mod_of_dvd q ( dvd_mul_right 4 m ), right_2, Nat.mod_mod_of_dvd _ ( dvd_mul_right 4 m ), left_2 ];
-  refine' ⟨ q, hq.left, hq.right.right, fun p hp hp' => _ ⟩;
-  -- Since $q \equiv a \pmod{4m}$, we have $(-2q/p) = (-2a/p)$.
-  have h_cong : jacobiSym (-2 * (q : ℤ)) p = jacobiSym (-2 * (a : ℤ)) p := by
-    have h_cong : q ≡ a [ZMOD p] := by
-      exact Int.ModEq.of_dvd ( Int.natCast_dvd_natCast.mpr ( dvd_mul_of_dvd_right hp 4 ) ) ( Int.natCast_modEq_iff.mpr hq.2.1 );
-    rw [ jacobiSym.mod_left, jacobiSym.mod_left ];
-    rw [ Int.ModEq.mul_left _ h_cong ];
-    simp +decide [jacobiSym.mod_left ];
-  aesop
+  have hm_odd : Odd m := Nat.odd_iff.mpr (by omega)
+  -- Per-prime data: every prime factor `p` of `m` is odd, so apply the local lemma.
+  have ha_p : ∀ p : ℕ, p ∣ m → Nat.Prime p → ∃ a_p : ℕ,
+      jacobiSym (-2 * a_p) p = 1 ∧ a_p % p ≠ 0 ∧ a_p % 4 = 1 := fun p hp hp_prime =>
+    exists_residue_neg_two_qr_mod_odd_prime p hp_prime fun h => by
+      subst h; have : 2 ∣ m := hp; omega
+  choose! a ha using ha_p
+  -- CRT over primeFactors m plus `≡ 1 (mod 4)`.
+  obtain ⟨a_crt, ha_crt_p, ha_crt_4⟩ := exists_crt_primeFactors_and_mod4 hm_odd a
+  -- The resulting `a_crt` is automatically coprime to `4 * m`.
+  have ha_crt_cop : Nat.Coprime a_crt (4 * m) := by
+    refine Nat.Coprime.mul_right ?_ ?_
+    · exact ha_crt_4.gcd_eq.trans (by norm_num)
+    · refine Nat.coprime_of_dvd' fun k hk hk₁ hk₂ => ?_
+      have h_ak_nd := (ha k hk₂ hk).2.1
+      have := ha_crt_p k hk₂ hk
+      simp_all +decide [Nat.ModEq, Nat.dvd_iff_mod_eq_zero]
+  -- Dirichlet: a prime `q` in the class of `a_crt` mod `4m`.
+  obtain ⟨q, hq_prime, hq_mod, -⟩ : ∃ q : ℕ, Nat.Prime q ∧ q % (4 * m) = a_crt % (4 * m) ∧
+      4 * m < q := by
+    have h_dirichlet : Set.Infinite {q : ℕ | Nat.Prime q ∧ q % (4 * m) = a_crt % (4 * m)} := by
+      have hinf := @Nat.infinite_setOf_prime_and_eq_mod
+      specialize @hinf (4 * m) ?_ (a_crt : ZMod (4 * m)) ?_
+      · exact ⟨by aesop_cat⟩
+      · exact (ZMod.isUnit_iff_coprime a_crt (4 * m)).mpr ha_crt_cop
+      · convert hinf using 1
+        norm_num [← ZMod.natCast_eq_natCast_iff']
+    obtain ⟨q, hq_mem, hq_gt⟩ := h_dirichlet.exists_gt (4 * m)
+    exact ⟨q, hq_mem.1, hq_mem.2, hq_gt⟩
+  refine ⟨q, hq_prime, ?_, fun p hp hp_prime => ?_⟩
+  · -- `q % 4 = 1` from `q ≡ a_crt (mod 4m)` and `a_crt ≡ 1 (mod 4)`.
+    rw [← Nat.mod_mod_of_dvd q (dvd_mul_right 4 m), hq_mod,
+      Nat.mod_mod_of_dvd _ (dvd_mul_right 4 m)]
+    exact ha_crt_4
+  · -- Jacobi agreement: `q ≡ a_crt ≡ a p (mod p)`, so `(-2q/p) = (-2·a p /p) = 1`.
+    have h_qa : (q : ℤ) ≡ a_crt [ZMOD p] :=
+      Int.ModEq.of_dvd (Int.natCast_dvd_natCast.mpr (dvd_mul_of_dvd_right hp 4))
+        (Int.natCast_modEq_iff.mpr hq_mod)
+    have h_ap : (a_crt : ℤ) ≡ a p [ZMOD p] := Int.natCast_modEq_iff.mpr (ha_crt_p p hp hp_prime)
+    have h_chain : (-2 * (q : ℤ)) % p = (-2 * (a p : ℤ)) % p :=
+      (h_qa.trans h_ap).mul_left _
+    have heq : jacobiSym (-2 * (q : ℤ)) p = jacobiSym (-2 * (a p : ℤ)) p := by
+      rw [jacobiSym.mod_left (-2 * (q : ℤ)), h_chain, ← jacobiSym.mod_left (-2 * (a p : ℤ))]
+    rw [heq]
+    exact (ha p hp hp_prime).1
+
+#exit
 
 /-
 If $m \equiv 3 \pmod 8$ is squarefree, $q \equiv 1 \pmod 4$ is prime, and $(-2q/p) = 1$ for all $p|m$, then $(-m/q) = 1$.
