@@ -719,8 +719,6 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
         interval_cases b % 4 <;> trivial
       · nlinarith [show z ^ 2 * (m + 1 + 1) = 1 by nlinarith]
 
-#exit
-
 /-- There exist q, b, h, t, x, y, z yielding R² + 2v = m with v > 0 -/
 lemma exists_R_v_of_mod8_eq3 (m : ℕ) (hm : Squarefree m) (hm_pos : 0 < m) (hmod : m % 8 = 3) :
     ∃ (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ),
@@ -788,6 +786,25 @@ lemma jacobi_neg_d_of_odd_padicVal (p : ℕ) (a d b' : ℤ)
     · exact hp_not_dvd_d
     · exact h_div_b'
 
+/-- Completing-the-square for the binary form: `4·q·v = (2·q·x + b·y)² + m·y²` when
+`v = q·x² + b·x·y + h·y²` and `b² - 4·q·h = -m`. -/
+private lemma four_q_v_eq_sq_plus_m_y_sq {m : ℕ} {q : ℤ} {b h x y v : ℤ}
+    (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * q * h = -(m : ℤ)) :
+    4 * q * v = (2 * q * x + b * y) ^ 2 + (m : ℤ) * y ^ 2 := by
+  rw [hv]; linear_combination -hbqm * y ^ 2
+
+/-- If `R² ≡ a (mod p)` with `p ∤ a` and `p` an odd prime, then `(a/p) = 1` (Jacobi/Legendre). -/
+private lemma jacobiSym_eq_one_of_sq_modEq {p : ℕ} (hp : Nat.Prime p) {a R : ℤ}
+    (hpa : ¬ (p : ℤ) ∣ a) (hRa : R ^ 2 ≡ a [ZMOD p]) :
+    jacobiSym a p = 1 := by
+  haveI := Fact.mk hp
+  simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym,
+    Nat.primeFactorsList_prime hp]
+  rw [legendreSym.eq_one_iff]
+  · exact ⟨R, by simpa [sq] using hRa.symm⟩
+  · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpa
+
 lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     (hp : Nat.Prime p) (hp_odd : p ≠ 2)
     (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
@@ -797,18 +814,14 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     (hpm : ¬ (p : ℤ) ∣ m) :
     p % 4 = 1 := by
   have h_jacobi_m : jacobiSym m p = 1 := by
-    have hm_mod : (R ^ 2 : ℤ) ≡ m [ZMOD p] := by
-      norm_num [← hRv, Int.modEq_iff_dvd]
-      refine dvd_mul_of_dvd_right ?_ _
+    refine jacobiSym_eq_one_of_sq_modEq hp hpm ?_
+    -- `R² ≡ m (mod p)`: from `R² + 2v = m` and `p ∣ v` (⟸ `v ≠ 0 mod p` since padic val odd).
+    have hpv : (p : ℤ) ∣ v := by
       contrapose! hpv
       simp_all +decide [padicValInt.eq_zero_of_not_dvd]
-    haveI := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
-    simp +decide [Nat.primeFactorsList_prime hp]
-    haveI := Fact.mk hp
-    rw [legendreSym.eq_one_iff]
-    · aesop
-    · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpm
+    refine Int.modEq_iff_dvd.mpr ?_
+    rw [show (m - R ^ 2 : ℤ) = 2 * v by linarith]
+    exact hpv.mul_left 2
   have h_jacobi_neg_m : jacobiSym (-m) p = 1 := by
     by_cases hpq : (p : ℤ) ∣ q <;> simp_all
     · have hb_sq_mod_p : b ^ 2 ≡ -m [ZMOD p] := by
