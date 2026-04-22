@@ -243,71 +243,108 @@ lemma exists_b_h (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime 
 /-
 There exists an integer $t$ such that $2q t^2 \equiv -1 \pmod m$.
 -/
+/-- Per-prime existence: for a prime `p` with `2q` coprime to `p` and `(-2q/p) = 1`, there is
+an integer `t_p` with `2q·t_p² ≡ -1 (mod p)`. The witness is `s · (2q)⁻¹` where `s² ≡ -2q`. -/
+private lemma exists_t_local_of_jacobi (p q : ℕ) (hp : Nat.Prime p)
+    (hp_cop : Nat.Coprime (2 * q) p) (hjac : jacobiSym (-2 * q) p = 1) :
+    ∃ t : ℤ, 2 * q * t ^ 2 ≡ -1 [ZMOD p] := by
+  haveI := Fact.mk hp
+  obtain ⟨s, hs⟩ : ∃ s : ℤ, s ^ 2 ≡ -2 * q [ZMOD p] := by
+    simp_all +decide [jacobiSym, ← ZMod.intCast_eq_intCast_iff, Nat.primeFactorsList_prime hp]
+    rw [legendreSym.eq_one_iff] at hjac
+    · obtain ⟨x, hx⟩ := hjac
+      refine ⟨x.val, ?_⟩
+      simpa [sq, ← ZMod.intCast_eq_intCast_iff] using hx.symm
+    · rw [legendreSym] at hjac
+      aesop
+  obtain ⟨inv_2q, hinv_2q⟩ : ∃ inv_2q : ℤ, (2 * q : ℤ) * inv_2q ≡ 1 [ZMOD p] := by
+    have := Int.mod_coprime hp_cop
+    push_cast at this
+    exact this
+  refine ⟨s * inv_2q, ?_⟩
+  convert hs.mul_left (2 * q * inv_2q ^ 2) |>.trans ?_ using 1 <;> ring_nf
+  convert (hinv_2q.pow 2).neg using 1
+  ring
+
+/-- If `m` is squarefree and an integer congruence `x ≡ y (mod p)` holds for every prime
+factor `p` of `m`, then the congruence lifts to `x ≡ y (mod m)`. -/
+private lemma int_modEq_of_forall_modEq_primeFactors_squarefree {m : ℕ} (hm : Squarefree m)
+    {x y : ℤ} (h : ∀ p ∈ m.primeFactors, x ≡ y [ZMOD (p : ℤ)]) : x ≡ y [ZMOD m] := by
+  rw [Int.modEq_iff_dvd]
+  have h_prod : (m : ℤ) = ∏ p ∈ Nat.primeFactors m, (p : ℤ) := by
+    rw [← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hm]
+  rw [h_prod]
+  refine Finset.prod_dvd_of_coprime (fun p hp q hq hpq => ?_)
+    (fun p hp => Int.modEq_iff_dvd.mp (h p hp))
+  have := Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
+    (Nat.prime_of_mem_primeFactors hq)
+  aesop
+
+/-- Integer CRT over the prime factors of a squarefree number: given per-prime residue data,
+produce a single integer matching all the congruences simultaneously. -/
+private lemma exists_int_crt_primeFactors_squarefree {m : ℕ} (t : ℕ → ℤ) :
+    ∃ x : ℤ, ∀ p ∈ m.primeFactors, x ≡ t p [ZMOD (p : ℤ)] := by
+  -- Build indicator `x p` = `y_p · ∏_{q≠p} q · t p`, with `y_p · ∏ ≡ 1 (mod p)`.
+  have h_ind : ∀ p ∈ m.primeFactors, ∃ x : ℤ, x ≡ t p [ZMOD (p : ℤ)] ∧
+      ∀ q ∈ m.primeFactors, q ≠ p → x ≡ 0 [ZMOD (q : ℤ)] := by
+    intro p hp
+    obtain ⟨y_p, hy_p⟩ : ∃ y_p : ℤ, y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) ≡ 1 [ZMOD p] := by
+      have h_coprime : Nat.gcd p (∏ q ∈ m.primeFactors \ {p}, q) = 1 :=
+        Nat.Coprime.prod_right fun q hq => by
+          have := Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
+            (Nat.prime_of_mem_primeFactors (Finset.mem_sdiff.mp hq).1)
+          aesop
+      have h_bezout := Nat.gcd_eq_gcd_ab p (∏ q ∈ m.primeFactors \ {p}, q)
+      refine ⟨Nat.gcdB p (∏ q ∈ m.primeFactors \ {p}, q), ?_⟩
+      rw [Int.modEq_iff_dvd]
+      refine ⟨Nat.gcdA p (∏ q ∈ m.primeFactors \ {p}, q), ?_⟩
+      rw [h_coprime] at h_bezout
+      push_cast at h_bezout ⊢
+      linarith
+    refine ⟨y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) * t p, by simpa using hy_p.mul_right _,
+      fun q hq hqp => Int.modEq_zero_iff_dvd.mpr <|
+        dvd_mul_of_dvd_left (dvd_mul_of_dvd_right
+          (Finset.dvd_prod_of_mem _ (by aesop)) _) _⟩
+  choose! x hx₁ hx₂ using h_ind
+  refine ⟨∑ p ∈ m.primeFactors, x p, fun p hp => ?_⟩
+  -- `∑ = x p + ∑_{q ≠ p} x q ≡ x p + 0 ≡ t p (mod p)`.
+  rw [← Finset.add_sum_erase _ _ hp]
+  have h_rest : (p : ℤ) ∣ ∑ q ∈ m.primeFactors.erase p, x q :=
+    Finset.dvd_sum fun q hq => by
+      obtain ⟨hq_ne, hq_mem⟩ := Finset.mem_erase.mp hq
+      exact Int.modEq_zero_iff_dvd.mp (hx₂ q hq_mem p hp (Ne.symm hq_ne))
+  calc x p + ∑ q ∈ m.primeFactors.erase p, x q
+      ≡ x p + 0 [ZMOD (p : ℤ)] := (Int.ModEq.refl _).add (Int.modEq_zero_iff_dvd.mpr h_rest)
+    _ = x p := by ring
+    _ ≡ t p [ZMOD (p : ℤ)] := hx₁ p hp
+
 lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q)
     (h_jacobi : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1) :
     ∃ t : ℤ, (2 * q : ℤ) * t^2 ≡ -1 [ZMOD m] := by
-  -- By the Chinese Remainder Theorem, there exists $t$ such that $t \equiv t_p \pmod p$ for all $p|m$.
-  obtain ⟨t, ht⟩ : ∃ t : ℤ, ∀ p ∈ Nat.primeFactors m, 2 * q * t ^ 2 ≡ -1 [ZMOD p] := by
-    -- For each prime $p$ dividing $m$, there exists an integer $t_p$ such that $2q t_p^2 \equiv -1 \pmod p$.
-    have h_exists_tp (p : ℕ) (hp : p ∈ Nat.primeFactors m) : ∃ t_p : ℤ, 2 * q * t_p ^ 2 ≡ -1 [ZMOD p] := by
-      -- Since $(-2q/p) = 1$, there exists an integer $t$ such that $t^2 \equiv -2q \pmod p$.
-      obtain ⟨t, ht⟩ : ∃ t : ℤ, t ^ 2 ≡ -2 * q [ZMOD p] := by
-        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp ) ; simp_all +decide [ jacobiSym, ← ZMod.intCast_eq_intCast_iff ] ;
-        specialize h_jacobi p hp.2.1 hp.1 ; simp_all +decide [ Nat.primeFactorsList_prime hp.1 ];
-        rw [ legendreSym.eq_one_iff ] at h_jacobi;
-        · obtain ⟨ x, hx ⟩ := h_jacobi; use x.val; simpa [ sq, ← ZMod.intCast_eq_intCast_iff ] using hx.symm;
-        · rw [ legendreSym ] at h_jacobi ; aesop;
-      -- Let $t_p = t \cdot (2q)^{-1}$, where $(2q)^{-1}$ is the multiplicative inverse of $2q$ modulo $p$.
-      obtain ⟨inv_2q, hinv_2q⟩ : ∃ inv_2q : ℤ, 2 * q * inv_2q ≡ 1 [ZMOD p] := by
-        have h_inv : Int.gcd (2 * q : ℤ) p = 1 := by
-          refine' Nat.Coprime.mul_left _ _;
-          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast, Nat.coprime_two_left]
-            obtain ⟨left, right⟩ := hp
-            obtain ⟨left_1, right⟩ := right
-            apply Odd.of_dvd_nat _ left_1
-            rw [Nat.odd_iff]
-            omega
-          · rw [ Nat.coprime_primes ] <;>
-            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast]
-            obtain ⟨left, right⟩ := hp
-            obtain ⟨left_1, right⟩ := right
-            apply Aesop.BuiltinRules.not_intro
-            intro a
-            subst a
-            simp_all only
-            have := h_jacobi q left_1 left; rw [ jacobiSym.mod_left ] at this; norm_num at this;
-            rw [ jacobiSym.zero_left ] at this ; aesop;
-            exact left.one_lt;
-        exact Int.mod_coprime h_inv;
-      use t * inv_2q;
-      convert ht.mul_left ( 2 * q * inv_2q ^ 2 ) |> Int.ModEq.trans <| ?_ using 1 <;> ring_nf;
-      convert hinv_2q.pow 2 |> Int.ModEq.neg using 1 ; ring;
-    choose! t ht using h_exists_tp;
-    have h_crt : ∀ p ∈ m.primeFactors, ∃ x : ℤ, x ≡ t p [ZMOD p] ∧ ∀ q ∈ m.primeFactors, q ≠ p → x ≡ 0 [ZMOD q] := by
-      -- For each prime factor $p$ of $m$, let $y_p$ be the multiplicative inverse of $\prod_{q \in m.primeFactors, q \neq p} q$ modulo $p$.
-      intros p hp
-      obtain ⟨y_p, hy_p⟩ : ∃ y_p : ℤ, y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) ≡ 1 [ZMOD p] := by
-        have h_coprime : Nat.gcd p (∏ q ∈ m.primeFactors \ {p}, q) = 1 := by
-          exact Nat.Coprime.prod_right fun q hq => by have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors hp ) ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hq |>.1 ) ) ; aesop;
-        have := Nat.gcd_eq_gcd_ab p ( ∏ q ∈ m.primeFactors \ { p }, q )
-        simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, and_imp, Nat.cast_one, Nat.cast_prod,
-          not_false_eq_true, neg_add_rev, forall_const, implies_true]
-        obtain ⟨left, right⟩ := hp
-        obtain ⟨left_1, right⟩ := right
-        exact ⟨ Nat.gcdB p ( ∏ q ∈ m.primeFactors \ { p }, q ), by rw [ Int.modEq_iff_dvd ] ; use Nat.gcdA p ( ∏ q ∈ m.primeFactors \ { p }, q ) ; linarith ⟩;
-      use y_p * (∏ q ∈ m.primeFactors \ {p}, (q : ℤ)) * t p;
-      exact ⟨ by simpa using hy_p.mul_right _, fun q hq hqp => Int.modEq_zero_iff_dvd.mpr <| dvd_mul_of_dvd_left ( dvd_mul_of_dvd_right ( Finset.dvd_prod_of_mem _ <| by aesop ) _ ) _ ⟩;
-    choose! x hx₁ hx₂ using h_crt;
-    use ∑ p ∈ m.primeFactors, x p;
-    simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ];
-    intro p pp dp dm; rw [ Finset.sum_eq_single p ] <;> aesop;
-  -- Since $m$ is squarefree, $m = \prod p$, so $2q t^2 \equiv -1 \pmod m$.
-  use t;
-  -- Since $m$ is squarefree, it is the product of its distinct prime factors.
-  have h_prod : (m : ℤ) = ∏ p ∈ Nat.primeFactors m, (p : ℤ) := by
-    rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hm_sq ];
-  simp_all +decide [ Int.modEq_iff_dvd ];
-  exact Finset.prod_dvd_of_coprime ( fun p hp q hq hpq => by have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors hp ) ( Nat.prime_of_mem_primeFactors hq ) ; aesop ) fun p hp => ht p ( Nat.prime_of_mem_primeFactors hp ) ( Nat.dvd_of_mem_primeFactors hp ) ( by aesop_cat )
+  -- Per-prime data: every prime factor `p` of `m` is odd and `≠ q`.
+  have h_tp : ∀ p ∈ Nat.primeFactors m, ∃ t_p : ℤ, 2 * q * t_p ^ 2 ≡ -1 [ZMOD (p : ℤ)] := by
+    intro p hp
+    refine exists_t_local_of_jacobi p q (Nat.prime_of_mem_primeFactors hp) ?_
+      (h_jacobi p (Nat.dvd_of_mem_primeFactors hp) (Nat.prime_of_mem_primeFactors hp))
+    refine Nat.Coprime.mul_left ?_ ?_
+    · refine Nat.prime_two.coprime_iff_not_dvd.mpr fun h2p => ?_
+      have : 2 ∣ m := dvd_trans h2p (Nat.dvd_of_mem_primeFactors hp)
+      omega
+    · rw [Nat.coprime_primes hq_prime (Nat.prime_of_mem_primeFactors hp)]
+      rintro rfl
+      have := h_jacobi q (Nat.dvd_of_mem_primeFactors hp) hq_prime
+      rw [jacobiSym.mod_left] at this
+      norm_num at this
+      rw [jacobiSym.zero_left hq_prime.one_lt] at this
+      exact absurd this (by decide)
+  choose! t ht using h_tp
+  -- CRT: assemble a single integer `x` matching all `t p` modulo `p`.
+  obtain ⟨x, hx⟩ := exists_int_crt_primeFactors_squarefree (m := m) t
+  refine ⟨x, int_modEq_of_forall_modEq_primeFactors_squarefree hm_sq fun p hp => ?_⟩
+  calc 2 * (q : ℤ) * x ^ 2 ≡ 2 * q * (t p) ^ 2 [ZMOD (p : ℤ)] := ((hx p hp).pow 2).mul_left _
+    _ ≡ -1 [ZMOD (p : ℤ)] := ht p hp
+
+#exit
 
 noncomputable def linear_map_M (m q : ℕ) (t b : ℤ) : (Fin 3 → ℝ) →ₗ[ℝ] (Fin 3 → ℝ) :=
   Matrix.toLin' (![![2 * t * q, t * b, m], ![(Real.sqrt (2 * q)), b / (Real.sqrt (2 * q)), 0], ![0, Real.sqrt m / Real.sqrt (2 * q), 0]] : Matrix (Fin 3) (Fin 3) ℝ)
