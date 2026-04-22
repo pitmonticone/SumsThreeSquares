@@ -678,13 +678,9 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
       rw [← rst_expand_eq m q t b h x y z hq (by simpa using hbqm)]
       simp [mul_assoc, mul_left_comm, mul_comm]
     exact_mod_cast h_expand ▸ hlt
-  have h_mod : (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
-      2 * ((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2) ≡ 0 [ZMOD m] :=
-    rst_modEq_zero m q t b h x y z hqt hbqm
-  have h_nn : 0 ≤ (2 * t * q * x + t * b * y + m * z : ℤ) ^ 2 +
-      2 * ((q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2) := by positivity
   have h_cases := eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul
-    (by exact_mod_cast hm : (0 : ℤ) < m) h_nn h_mod h_lt
+    (by exact_mod_cast hm : (0 : ℤ) < m) (by positivity)
+    (rst_modEq_zero m q t b h x y z hqt hbqm) h_lt
   rcases h_cases with h_case1 | h_case2
   · -- `R² + 2v = 0` forces `x = y = z = 0`, contradicting `(x, y, z) ≠ (0, 0, 0)`.
     have hsum0 : (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z : ℝ) ^ 2 +
