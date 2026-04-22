@@ -549,74 +549,41 @@ private lemma rst_expand_eq (m q : ℕ) (t b h x y z : ℤ) (hq : 0 < q)
           2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) := by
           simpa [add_assoc, add_left_comm, add_comm] using hqf
 
+/-- Key composite identity: under `t²·2q ≡ -1 (mod m)` and `b² - 4qh = -m`,
+we have `t²·b² ≡ -2h (mod m)`. Combines the two hypotheses: `b² ≡ 4qh (mod m)` from `hbqm`,
+and `t²·2q ≡ -1` turns `t²·(4qh) = (t²·2q)·(2h)` into `-2h`. -/
+private lemma t_sq_mul_b_sq_modEq_neg_two_h {m q : ℕ} {t b h : ℤ}
+    (hqt : t ^ 2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
+    t ^ 2 * b ^ 2 ≡ -2 * h [ZMOD m] := by
+  have hb_sq : b ^ 2 = 4 * q * h - m := by linarith
+  calc t ^ 2 * b ^ 2
+      = t ^ 2 * (4 * q * h - m) := by rw [hb_sq]
+    _ = (t ^ 2 * 2 * q) * (2 * h) - t ^ 2 * m := by ring
+    _ ≡ (-1) * (2 * h) - 0 [ZMOD m] := (hqt.mul_right _).sub
+        (Int.modEq_zero_iff_dvd.mpr ⟨t ^ 2, by ring⟩)
+    _ = -2 * h := by ring
+
 private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
     (hqt : t^2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
     (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
       2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) ≡ 0 [ZMOD m] := by
-  have hsplit :
-      (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
-          2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2) =
-        (t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2) +
-        (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := by ring
-  rw [hsplit]
-  have hdrop :
-      (t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2) +
-        (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
-      ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
-    have h0 : (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m ≡ 0 [ZMOD m] :=
-      Int.modEq_zero_iff_dvd.mpr ⟨t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2, by ring⟩
-    simpa only [add_zero] using (Int.ModEq.refl _).add h0
-  have hqt_xy : (t ^ 2 * 2 * ↑q) * (x * b * y * 2) ≡ (-1) * (x * b * y * 2) [ZMOD m] := by
-    simpa using hqt.mul_right (x * b * y * 2)
-  have hqt_x2 : (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) ≡ (-1) * (↑q * x ^ 2 * 2) [ZMOD m] := by
-    simpa using hqt.mul_right (↑q * x ^ 2 * 2)
-  have hreplace :
-      (t ^ 2 * 2 * ↑q) * (x * b * y * 2) + (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2
-      ≡ (-1) * (x * b * y * 2) + (-1) * (↑q * x ^ 2 * 2) + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
-    apply Int.ModEq.add
-    apply Int.ModEq.add
-    apply Int.ModEq.add
-    apply Int.ModEq.add
-    apply Int.ModEq.add
-    · exact hqt_xy
-    · exact hqt_x2
-    all_goals exact Int.ModEq.refl _
-  have hb2 : (b : ℤ) ^ 2 = 4 * q * h - m := by linarith [hbqm]
-  have ht2b2 : t ^ 2 * b ^ 2 ≡ t ^ 2 * (4 * q * h) [ZMOD m] := by
-    calc
-      t ^ 2 * b ^ 2 = t ^ 2 * (4 * q * h - m) := by rw [hb2]
-      _ = t ^ 2 * (4 * q * h) - t ^ 2 * m := by ring
-      _ ≡ t ^ 2 * (4 * q * h) - 0 [ZMOD m] := by
-            apply Int.ModEq.sub (Int.ModEq.refl _)
-            exact Int.modEq_zero_iff_dvd.mpr ⟨t ^ 2, by ring⟩
-      _ = t ^ 2 * (4 * q * h) := by ring
-  have ht2_4qh : t ^ 2 * (4 * q * h) ≡ -2 * h [ZMOD m] := by
-    calc
-      t ^ 2 * (4 * q * h) = (t ^ 2 * 2 * q) * (2 * h) := by ring
-      _ ≡ (-1) * (2 * h) [ZMOD m] := hqt.mul_right _
-      _ = -2 * h := by ring
-  calc
-    (t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2) +
-        (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m
-      ≡ t ^ 2 * ↑q * x * b * y * 4 + t ^ 2 * ↑q ^ 2 * x ^ 2 * 4 + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := hdrop
-    _ = (t ^ 2 * 2 * ↑q) * (x * b * y * 2) + (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 := by ring
-    _ ≡ (-1) * (x * b * y * 2) + (-1) * (↑q * x ^ 2 * 2) + t ^ 2 * b ^ 2 * y ^ 2 +
-          ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := hreplace
-    _ = t ^ 2 * b ^ 2 * y ^ 2 + y ^ 2 * h * 2 := by ring
-    _ ≡ (t ^ 2 * (4 * q * h)) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
-      apply Int.ModEq.add _ (Int.ModEq.refl _)
-      exact ht2b2.mul_right _
-    _ ≡ (-2 * h) * y ^ 2 + y ^ 2 * h * 2 [ZMOD m] := by
-      apply Int.ModEq.add _ (Int.ModEq.refl _)
-      exact ht2_4qh.mul_right _
+  -- Algebraic expansion: sum-of-squares = `P(t,q,b,h,x,y) + M(t,q,b,x,y,z) · m`, so mod `m`
+  -- it suffices to reduce the polynomial `P` using `hqt` and `t²·b² ≡ -2h`.
+  have htb2 := t_sq_mul_b_sq_modEq_neg_two_h hqt (by exact_mod_cast hbqm)
+  calc (2 * ↑t * ↑q * ↑x + ↑t * ↑b * ↑y + ↑m * ↑z) ^ 2 +
+        2 * (↑q * ↑x ^ 2 + ↑b * ↑x * ↑y + ↑h * ↑y ^ 2)
+      = (t ^ 2 * 2 * q) * (x * b * y * 2) + (t ^ 2 * 2 * q) * (q * x ^ 2 * 2) +
+          t ^ 2 * b ^ 2 * y ^ 2 + (q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2) +
+          (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m := by ring
+    _ ≡ (-1) * (x * b * y * 2) + (-1) * (q * x ^ 2 * 2) +
+          (-2 * h) * y ^ 2 + (q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2) + 0 [ZMOD m] := by
+        refine Int.ModEq.add (Int.ModEq.add (Int.ModEq.add (Int.ModEq.add ?_ ?_) ?_)
+          (Int.ModEq.refl _)) ?_
+        · exact hqt.mul_right _
+        · exact hqt.mul_right _
+        · exact htb2.mul_right _
+        · exact Int.modEq_zero_iff_dvd.mpr ⟨t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2,
+            by ring⟩
     _ = 0 := by ring
 
 private lemma xyz_zero_of_sum_sq_eq_zero (m q : ℕ) (t b x y z : ℤ)
