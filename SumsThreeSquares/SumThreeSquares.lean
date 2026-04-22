@@ -812,16 +812,11 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     rw [show (m - R ^ 2 : ℤ) = 2 * v by linarith]
     exact hpv.mul_left 2
   have h_jacobi_neg_m : jacobiSym (-m) p = 1 := by
-    by_cases hpq : (p : ℤ) ∣ q <;> simp_all
-    · have hb_sq_mod_p : b ^ 2 ≡ -m [ZMOD p] := by
-        exact Int.modEq_iff_dvd.mpr ⟨-4 * h * hpq.choose, by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
-      haveI := Fact.mk hp
-      simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
-      simp_all +decide [Nat.primeFactorsList_prime hp]
-      rw [legendreSym.eq_one_iff] at *
-      · exact ⟨b, by simpa [sq] using hb_sq_mod_p.symm⟩
-      · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpm
-      · simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
+    by_cases hpq : (p : ℤ) ∣ q
+    · -- `p | q`: then `b² - 4qh = -m` gives `b² ≡ -m (mod p)`, so `(-m/p) = 1`.
+      refine jacobiSym_eq_one_of_sq_modEq hp (by simpa using hpm) (R := b) ?_
+      exact Int.modEq_iff_dvd.mpr ⟨-4 * h * hpq.choose,
+        by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
     · have h_jacobi_neg_m_odd : ¬ Even (padicValInt p ((2 * q * x + b * y) ^ 2 + m * y ^ 2)) := by
         have h_jacobi_neg_m_odd : padicValInt p (4 * q * v) = padicValInt p v := by
           haveI := Fact.mk hp
