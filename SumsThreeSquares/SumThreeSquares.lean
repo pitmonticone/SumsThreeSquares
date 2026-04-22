@@ -169,9 +169,7 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
     have h_ap : (a_crt : ℤ) ≡ a p [ZMOD p] := Int.natCast_modEq_iff.mpr (ha_crt_p p hp hp_prime)
     have h_chain : (-2 * (q : ℤ)) % p = (-2 * (a p : ℤ)) % p :=
       (h_qa.trans h_ap).mul_left _
-    have heq : jacobiSym (-2 * (q : ℤ)) p = jacobiSym (-2 * (a p : ℤ)) p := by
-      rw [jacobiSym.mod_left (-2 * (q : ℤ)), h_chain, ← jacobiSym.mod_left (-2 * (a p : ℤ))]
-    rw [heq]
+    rw [jacobiSym.mod_left (-2 * (q : ℤ)), h_chain, ← jacobiSym.mod_left (-2 * (a p : ℤ))]
     exact (ha p hp hp_prime).1
 
 /-
