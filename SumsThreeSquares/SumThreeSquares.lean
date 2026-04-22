@@ -632,6 +632,19 @@ private lemma quadform_nonneg {q : ℕ} {b h : ℤ} {m : ℕ} (hq : 0 < q)
   have hm_nn : (0 : ℤ) ≤ (m : ℤ) := Int.natCast_nonneg m
   nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), sq_nonneg (y : ℤ), hbqm]
 
+/-- The binary form `q·x² + b·x·y + h·y²` with `q > 0` and discriminant `-m < 0` has only the
+trivial zero: `qf = 0 ↔ x = y = 0`. (Reverse direction is trivial; stated as `x = 0 ∧ y = 0`.) -/
+private lemma quadform_eq_zero_imp_xy_zero {q : ℕ} {b h : ℤ} {m : ℕ} (hq : 0 < q) (hm : 0 < m)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) {x y : ℤ}
+    (h_zero : (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 = 0) :
+    x = 0 ∧ y = 0 := by
+  by_cases hy : y = 0
+  · refine ⟨?_, hy⟩
+    subst hy; nlinarith [sq_nonneg x, hq, h_zero]
+  · exfalso
+    have : (0 : ℤ) < (m : ℤ) := by exact_mod_cast hm
+    nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), mul_self_pos.mpr hy, hbqm]
+
 /-- A nonnegative integer `n ≡ 0 (mod m)` with `n < 2m` is either `0` or `m`. -/
 private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < m)
     {n : ℤ} (h_nn : 0 ≤ n) (h_mod : n ≡ 0 [ZMOD m]) (h_lt : n < 2 * m) :
@@ -689,17 +702,18 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
     · rw [ max_eq_left ];
       · convert h_case2 using 1;
       · nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
-    · contrapose! hne;
-      have hxy_zero : x = 0 ∧ y = 0 := by
-        have hxy_zero : q * x ^ 2 + b * x * y + h * y ^ 2 = 0 := by
-          nlinarith [ sq_nonneg ( 2 * q * x + b * y ) ];
-        by_cases hy : y = 0;
-        · aesop;
-        · nlinarith [ sq_nonneg ( 2 * q * x + b * y ), mul_self_pos.mpr hy ];
-      simp_all +decide;
-      rcases m with ( _ | _ | m ) <;> norm_num at *;
-      · exact absurd ( congr_arg ( · % 4 ) hbqm ) ( by norm_num [ sq, Int.add_emod, Int.sub_emod, Int.mul_emod ] ; have := Int.emod_nonneg b four_pos.ne'; have := Int.emod_lt_of_pos b four_pos; interval_cases b % 4 <;> trivial );
-      · nlinarith [ show z ^ 2 * ( m + 1 + 1 ) = 1 by nlinarith ]
+    · contrapose! hne
+      have hqf_zero : (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 = 0 := by
+        nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y)]
+      obtain ⟨rfl, rfl⟩ := quadform_eq_zero_imp_xy_zero hq hm hbqm hqf_zero
+      simp_all +decide
+      rcases m with _ | _ | m <;> norm_num at *
+      · refine absurd (congr_arg (· % 4) hbqm) ?_
+        norm_num [sq, Int.add_emod, Int.sub_emod, Int.mul_emod]
+        have := Int.emod_nonneg b four_pos.ne'
+        have := Int.emod_lt_of_pos b four_pos
+        interval_cases b % 4 <;> trivial
+      · nlinarith [show z ^ 2 * (m + 1 + 1) = 1 by nlinarith]
 
 #exit
 
