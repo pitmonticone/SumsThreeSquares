@@ -899,13 +899,14 @@ lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m :
     norm_cast at *
     simp_all +decide [Nat.squarefree_iff_prime_squarefree]
   have h_jacobi_2q_p : jacobiSym (2 * q) p = 1 := by
-    haveI := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_eq_intCast_iff, jacobiSym]
-    simp_all +decide [Nat.primeFactorsList_prime hp]
-    rw [legendreSym.eq_one_iff]
-    · exact ⟨y, by simpa [sq, ← ZMod.intCast_eq_intCast_iff] using h_y_sq_mod_p.symm⟩
-    · intro H
-      simp_all +decide [legendreSym]
+    refine jacobiSym_eq_one_of_sq_modEq hp ?_ (R := y) h_y_sq_mod_p
+    intro h2q
+    have hdvd_neg : (p : ℤ) ∣ (-2 * (q : ℤ)) := by
+      have : (-2 * (q : ℤ)) = -(2 * q) := by ring
+      rw [this]; exact h2q.neg_right
+    rw [jacobiSym.mod_left, Int.emod_eq_zero_of_dvd hdvd_neg,
+      jacobiSym.zero_left hp.one_lt] at hjac
+    exact absurd hjac (by decide)
   haveI := Fact.mk hp
   simp_all +decide [jacobiSym.mul_left, ← ZMod.intCast_eq_intCast_iff]
   rw [jacobiSym.neg] at hjac
