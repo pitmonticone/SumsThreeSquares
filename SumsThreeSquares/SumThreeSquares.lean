@@ -174,8 +174,6 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
     rw [heq]
     exact (ha p hp hp_prime).1
 
-#exit
-
 /-
 If $m \equiv 3 \pmod 8$ is squarefree, $q \equiv 1 \pmod 4$ is prime, and $(-2q/p) = 1$ for all $p|m$, then $(-m/q) = 1$.
 -/
@@ -391,6 +389,54 @@ lemma quad_form_decomposition (m q : ℕ) (b h x y : ℤ) (hq : 0 < q)
   nlinarith [sq_nonneg (x : ℝ), sq_nonneg (y : ℝ), hb2', hb2]
 
 
+/-- Minkowski volume certificate: the preimage under `linear_map_M_euclidean` of the ball
+of radius `√(2m)` has volume strictly greater than `2^3 = 8`. This is the key numerical
+input to Minkowski's convex-body theorem for producing a nonzero lattice point. -/
+private lemma vol_preimage_ball_gt_eight (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
+    (2 : ENNReal) ^ 3 < MeasureTheory.volume
+      ((linear_map_M_euclidean m q t b) ⁻¹'
+        Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))) := by
+  rw [vol_preimage_ball_euclidean m q t b hm hq]
+  norm_num
+  ring_nf
+  field_simp
+  ring_nf
+  have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
+    rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3 : ℝ) = 2 + 1), Real.rpow_add]
+    simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
+    all_goals positivity
+  rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀]
+  · rw [← pow_lt_pow_iff_left₀ (n := 2)]
+    · norm_num1
+      rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
+      nlinarith [Real.pi_gt_d4]
+    · simp
+    · positivity
+    · positivity
+  all_goals positivity
+
+/-- Explicit row-wise action of `linear_map_M_euclidean` on a Euclidean vector. -/
+private lemma linear_map_M_euclidean_apply_coords (m q : ℕ) (t b : ℤ)
+    (x : EuclideanSpace ℝ (Fin 3)) :
+    (linear_map_M_euclidean m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧
+    (linear_map_M_euclidean m q t b x) 1 =
+      Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧
+    (linear_map_M_euclidean m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
+  unfold linear_map_M_euclidean
+  norm_num [Fin.sum_univ_three]
+  ring_nf
+  erw [Matrix.toLin'_apply]
+  ring_nf
+  simp_all (config := { decide := true }) only [Fin.isValue]
+  refine ⟨?_, ?_, ?_⟩
+  · norm_num [Matrix.mulVec]
+    ring_nf!
+  · simp [Matrix.mulVec]
+    ring!
+  · simp (config := { decide := Bool.true }) [Matrix.mulVec]
+    ring_nf
+    aesop (simp_config := { decide := Bool.true })
+
 private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
     ∃ (x y z : ℤ), (x, y, z) ≠ (0, 0, 0) ∧
     let R := (2 * t * q : ℝ) * x + (t * b : ℝ) * y + (m : ℝ) * z
@@ -399,40 +445,14 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
     R^2 + S^2 + T^2 < 2 * m := by
   let B := Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
   let S_pre := (linear_map_M_euclidean m q t b) ⁻¹' B
-
-  have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := by
-    intro x hx
-    unfold S_pre B at hx ⊢
-    simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right] at hx ⊢
-    rw [map_neg, norm_neg]
+  have h_symm : ∀ x ∈ S_pre, -x ∈ S_pre := fun x hx => by
+    simp only [S_pre, B, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg, norm_neg]
+      at hx ⊢
     exact hx
-
-  have h_conv : Convex ℝ S_pre := by
-    unfold S_pre
-    apply Convex.linear_preimage
-    exact convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))
-
-  have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre := by
-    unfold S_pre
-    rw [vol_preimage_ball_euclidean m q t b hm hq]
-    norm_num
-    ring_nf
-    field_simp
-    ring_nf
-    have : (m : ℝ) * √(m : ℝ) = (m : ℝ) ^ (3 / 2 : ℝ) := by
-      rw [Real.rpow_div_two_eq_sqrt, (by norm_num : (3  : ℝ) = 2 + 1), Real.rpow_add]
-      simp only [Real.rpow_ofNat, Nat.cast_nonneg, Real.sq_sqrt, Real.rpow_one]
-      all_goals positivity
-    rw [this, Real.mul_rpow, mul_comm π, mul_assoc, mul_assoc, mul_lt_mul_iff_right₀]
-    · rw [← pow_lt_pow_iff_left₀ (n := 2)]
-      · norm_num1
-        rw [mul_pow, ← Real.rpow_two, ← Real.rpow_mul (by simp)]
-        nlinarith [Real.pi_gt_d4]
-      · simp
-      · positivity
-      · positivity
-    all_goals positivity
-
+  have h_conv : Convex ℝ S_pre :=
+    Convex.linear_preimage (convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))) _
+  have h_vol : (2 : ENNReal) ^ 3 < MeasureTheory.volume S_pre :=
+    vol_preimage_ball_gt_eight m q t b hm hq
   let E := EuclideanSpace ℝ (Fin 3)
   have := classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure h_symm h_conv h_vol
   obtain ⟨x, hx0, hxs, h⟩ := this
@@ -450,24 +470,7 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
   · convert ( show ( ‖linear_map_M_euclidean m q t b x‖ ^ 2 : ℝ ) < 2 * m from ?_ ) using 1 <;> norm_num [ EuclideanSpace.norm_eq, Fin.sum_univ_three ] ; ring_nf
     simp_all only [Nat.ofNat_nonneg, Real.sqrt_mul, Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg,
       norm_neg, implies_true, ne_eq, Fin.isValue, Real.sq_sqrt, Nat.cast_nonneg, inv_pow, S_pre, B]
-    · have h_expand : (linear_map_M_euclidean m q t b x) 0 = 2 * t * q * x 0 + t * b * x 1 + m * x 2 ∧
-        (linear_map_M_euclidean m q t b x) 1 = Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧
-        (linear_map_M_euclidean m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
-        unfold linear_map_M_euclidean
-        norm_num [ Fin.sum_univ_three ]
-        ring_nf
-        erw [ Matrix.toLin'_apply ]
-        ring_nf
-        simp_all (config := { decide := true }) only [Fin.isValue]
-        apply And.intro
-        · norm_num [ Matrix.mulVec ]
-          ring_nf!
-        · apply And.intro
-          · simp [Matrix.mulVec]
-            ring!
-          · simp ( config := { decide := Bool.true } ) [ Matrix.mulVec]
-            ring_nf
-            aesop ( simp_config := { decide := Bool.true } )
+    · have h_expand := linear_map_M_euclidean_apply_coords m q t b x
       rw [ Real.sq_sqrt <| by positivity ]
       have heq : ∀ i, (linear_map_M m q t b) ((EuclideanSpace.equiv (Fin 3) ℝ) x) i =
           ((linear_map_M_euclidean m q t b) x).ofLp i := fun _ => rfl
@@ -486,6 +489,8 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
       rw [ Real.sqrt_lt_sqrt_iff <| by positivity ] at *
       norm_num [ Fin.sum_univ_three ] at *
       linarith!
+
+#exit
 
 private lemma rst_expand_eq (m q : ℕ) (t b h x y z : ℤ) (hq : 0 < q)
     (hbqm : b ^ 2 - 4 * q * h = -m) :
