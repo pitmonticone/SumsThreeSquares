@@ -104,7 +104,7 @@ lemma exists_prime_aux (m : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) :
   obtain ⟨q, hq⟩ : ∃ q : ℕ, Nat.Prime q ∧ q % (4 * m) = a % (4 * m) ∧ q % 4 = 1 := by
     -- By Dirichlet's theorem on arithmetic progressions, there are infinitely many primes in the residue class $a \pmod{4m}$.
     have h_dirichlet : Set.Infinite {q : ℕ | Nat.Prime q ∧ q % (4 * m) = a % (4 * m)} := by
-      have := @Nat.setOf_prime_and_eq_mod_infinite;
+      have := @Nat.infinite_setOf_prime_and_eq_mod;
       specialize @this ( 4 * m ) ?_ ( a : ZMod ( 4 * m ) ) ?_ <;>
       simp_all only [Int.reduceNeg, neg_mul]
       · exact ⟨ by aesop_cat ⟩;
@@ -216,14 +216,14 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
       obtain ⟨inv_2q, hinv_2q⟩ : ∃ inv_2q : ℤ, 2 * q * inv_2q ≡ 1 [ZMOD p] := by
         have h_inv : Int.gcd (2 * q : ℤ) p = 1 := by
           refine' Nat.Coprime.mul_left _ _;
-          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast, Nat.coprime_two_left]
+          · simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast, Nat.coprime_two_left]
             obtain ⟨left, right⟩ := hp
             obtain ⟨left_1, right⟩ := right
             apply Odd.of_dvd_nat _ left_1
             rw [Nat.odd_iff]
             omega
           · rw [ Nat.coprime_primes ] <;>
-            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_cast]
+            simp_all only [Int.reduceNeg, neg_mul, Nat.mem_primeFactors, ne_eq, Int.natAbs_natCast]
             obtain ⟨left, right⟩ := hp
             obtain ⟨left_1, right⟩ := right
             apply Aesop.BuiltinRules.not_intro
@@ -279,11 +279,17 @@ lemma det_linear_map_M_ne_zero (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q)
   positivity
 
 noncomputable abbrev linear_map_M_euclidean (m q : ℕ) (t b : ℤ) : (EuclideanSpace ℝ (Fin 3)) →ₗ[ℝ] (EuclideanSpace ℝ (Fin 3)) :=
-  linear_map_M m q t b
+  (EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearMap ∘ₗ
+    (linear_map_M m q t b) ∘ₗ (EuclideanSpace.equiv (Fin 3) ℝ).toLinearMap
 
 lemma det_linear_map_M_euclidean (m q : ℕ) (t b : ℤ) (hm : 0 < m) (hq : 0 < q) :
     LinearMap.det (linear_map_M_euclidean m q t b) = m * Real.sqrt m := by
-  simpa [linear_map_M_euclidean] using det_linear_map_M m q t b hm hq
+  have hrw : linear_map_M_euclidean m q t b =
+      ((EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearEquiv :
+        (Fin 3 → ℝ) ≃ₗ[ℝ] EuclideanSpace ℝ (Fin 3)).toLinearMap ∘ₗ (linear_map_M m q t b) ∘ₗ
+        ((EuclideanSpace.equiv (Fin 3) ℝ).symm.toLinearEquiv.symm).toLinearMap := rfl
+  rw [hrw, LinearMap.det_conj]
+  exact det_linear_map_M m q t b hm hq
 
 /-
 The volume of the preimage of the ball is $\frac{4}{3}\pi (2m)^{3/2} / m^{3/2}$.
@@ -416,6 +422,9 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
             ring_nf
             aesop ( simp_config := { decide := Bool.true } )
       rw [ Real.sq_sqrt <| by positivity ]
+      have heq : ∀ i, (linear_map_M m q t b) ((EuclideanSpace.equiv (Fin 3) ℝ) x) i =
+          ((linear_map_M_euclidean m q t b) x).ofLp i := fun _ => rfl
+      simp only [heq]
       rw [ h_expand.1, h_expand.2.1, h_expand.2.2 ]
       ring_nf
       norm_num [ ne_of_gt, hq, hm ]
@@ -472,7 +481,7 @@ private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
           ↑q * x ^ 2 * 2 + x * b * y * 2 + y ^ 2 * h * 2 [ZMOD m] := by
     have h0 : (t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2) * m ≡ 0 [ZMOD m] :=
       Int.modEq_zero_iff_dvd.mpr ⟨t * q * x * z * 4 + t * b * y * z * 2 + m * z ^ 2, by ring⟩
-    simpa using Int.ModEq.add (Int.ModEq.refl _) h0
+    simpa only [add_zero] using (Int.ModEq.refl _).add h0
   have hqt_xy : (t ^ 2 * 2 * ↑q) * (x * b * y * 2) ≡ (-1) * (x * b * y * 2) [ZMOD m] := by
     simpa using hqt.mul_right (x * b * y * 2)
   have hqt_x2 : (t ^ 2 * 2 * ↑q) * (↑q * x ^ 2 * 2) ≡ (-1) * (↑q * x ^ 2 * 2) [ZMOD m] := by
@@ -873,7 +882,8 @@ lemma two_v_sum_two_squares (q : ℕ) (b h x y : ℤ) (R : ℤ) (v : ℕ) (m : �
     ∃ a b : ℕ, 2 * v = a ^ 2 + b ^ 2 := by
   rw [Nat.eq_sq_add_sq_iff]
   intro p hp hp3
-  exact even_padicVal_of_mod4_eq3 p q b h x y R v m hp hp3 hm_sq hv_pos hv_def hbqm hRv hjac
+  exact even_padicVal_of_mod4_eq3 p q b h x y R v m (Nat.prime_of_mem_primeFactors hp) hp3
+    hm_sq hv_pos hv_def hbqm hRv hjac
 
 
 /-- The final theorem -/
