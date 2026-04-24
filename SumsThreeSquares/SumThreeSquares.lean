@@ -423,6 +423,16 @@ private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < 
   have hk2 : k < 2 := by nlinarith
   interval_cases k <;> [left; right] <;> linarith
 
+/-- The discriminant `b² - 4qh` of an integer binary quadratic form cannot equal `-1`:
+squares mod 4 are in `{0, 1}` but `-1 ≡ 3 (mod 4)`. -/
+private lemma discriminant_ne_neg_one (q : ℕ) (b h : ℤ) : b ^ 2 - 4 * (q : ℤ) * h ≠ -1 := by
+  intro heq
+  have h4 := congr_arg (· % 4) heq
+  have := Int.emod_nonneg b four_pos.ne'
+  have := Int.emod_lt_of_pos b four_pos
+  norm_num [sq, Int.sub_emod, Int.mul_emod] at h4
+  interval_cases b % 4 <;> trivial
+
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
     (hqt : t ^ 2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
     ∃ (x y : ℤ) (R : ℤ) (v : ℕ),
@@ -464,11 +474,7 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
       obtain ⟨rfl, rfl⟩ := quadform_eq_zero_imp_xy_zero hq hm hbqm hqf_zero
       simp_all +decide
       rcases m with _ | _ | m <;> norm_num at *
-      · refine absurd (congr_arg (· % 4) hbqm) ?_
-        have := Int.emod_nonneg b four_pos.ne'
-        have := Int.emod_lt_of_pos b four_pos
-        norm_num [sq, Int.add_emod, Int.sub_emod, Int.mul_emod]
-        interval_cases b % 4 <;> trivial
+      · exact absurd hbqm (discriminant_ne_neg_one q b h)
       · have hz : z ^ 2 * (m + 1 + 1) = 1 := by nlinarith
         nlinarith [hz]
 
@@ -552,6 +558,18 @@ private lemma jacobiSym_eq_one_of_sq_modEq {p : ℕ} (hp : Nat.Prime p) {a R : �
   · exact ⟨R, by simpa [sq] using hRa.symm⟩
   · rwa [← ZMod.intCast_zmod_eq_zero_iff_dvd] at hpa
 
+/-- For an odd prime `p` coprime to `q` and dividing a nonzero integer `v`,
+`padicValInt p (4qv) = padicValInt p v`. -/
+private lemma padicValInt_four_q_v {p : ℕ} {q v : ℤ}
+    (hp : Nat.Prime p) (hp_odd : p ≠ 2) (hpq : ¬ (p : ℤ) ∣ q) (hpv : ¬ Even (padicValInt p v)) :
+    padicValInt p (4 * q * v) = padicValInt p v := by
+  have := Fact.mk hp
+  rw [padicValInt.mul, padicValInt.mul] <;> norm_num
+  · refine ⟨Or.inr <| mod_cast fun h => hp_odd ?_, Or.inr <| Or.inr hpq⟩
+    have := Nat.le_of_dvd (by decide) h
+    interval_cases p <;> trivial
+  all_goals aesop
+
 lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     (hp : Nat.Prime p) (hp_odd : p ≠ 2)
     (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
@@ -573,16 +591,9 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
       refine jacobiSym_eq_one_of_sq_modEq hp (by simpa using hpm) (R := b) ?_
       exact Int.modEq_iff_dvd.mpr ⟨-4 * h * hpq.choose,
         by linear_combination -hbqm - 4 * h * hpq.choose_spec⟩
-    · have h_jacobi_neg_m_odd : ¬ Even (padicValInt p ((2 * q * x + b * y) ^ 2 + m * y ^ 2)) := by
-        have h_jacobi_neg_m_odd : padicValInt p (4 * q * v) = padicValInt p v := by
-          have := Fact.mk hp
-          rw [padicValInt.mul, padicValInt.mul] <;> norm_num
-          · refine ⟨Or.inr <| mod_cast fun h => hp_odd ?_, Or.inr <| Or.inr hpq⟩
-            have := Nat.le_of_dvd (by decide) h
-            interval_cases p <;> trivial
-          all_goals aesop
-        grind
-      apply jacobi_neg_d_of_odd_padicVal p (2 * q * x + b * y) m y hp hpm h_jacobi_neg_m_odd
+    · have h_padic := padicValInt_four_q_v hp hp_odd hpq hpv
+      apply jacobi_neg_d_of_odd_padicVal p (2 * q * x + b * y) m y hp hpm
+      grind
   have h_jacobi_neg_1 : jacobiSym (-1) p = 1 := by
     have := jacobiSym.mul_left (-1) m p
     rw [neg_one_mul, h_jacobi_m, h_jacobi_neg_m, mul_one] at this
@@ -591,50 +602,70 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
   have := Nat.mod_lt p zero_lt_four
   interval_cases p % 4 <;> trivial
 
+/-- If `R² + 2v = m`, `p` is a prime dividing both `v` and `m`, then `p ∣ R`. -/
+private lemma dvd_R_of_dvd_v_dvd_m {p : ℕ} (hp : Nat.Prime p) {R v : ℤ} {m : ℕ}
+    (hRv : R ^ 2 + 2 * v = m) (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m) : (p : ℤ) ∣ R :=
+  Int.Prime.dvd_pow' hp <| by
+    rw [← Int.dvd_add_left (dvd_mul_of_dvd_right hpv _)]
+    exact hRv.symm ▸ Int.natCast_dvd_natCast.mpr hpm
+
+/-- Given `v = qx² + bxy + hy²`, `b² - 4qh = -m`, a prime `p ∣ v` and `p ∣ m`, then
+`p ∣ (2qx + by)`. Uses the identity `4qv = (2qx + by)² + m·y²`. -/
+private lemma dvd_two_q_x_add_b_y_of_dvd_v_dvd_m {p q : ℕ} {b h x y v : ℤ} {m : ℕ}
+    (hp : Nat.Prime p) (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
+    (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
+    (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m) : (p : ℤ) ∣ (2 * q * x + b * y) := by
+  have h_sum : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
+    rw [← four_q_v_eq_sq_plus_m_y_sq hv hbqm]
+    exact hpv.mul_left (4 * q)
+  exact Int.Prime.dvd_pow' hp <|
+    (Int.dvd_add_left ((Int.natCast_dvd_natCast.mpr hpm).mul_right _)).mp h_sum
+
+/-- The quadratic residue extraction: given the problem hypotheses with `p` a prime
+dividing both `v` and `m` (and `m` squarefree), we have `y² ≡ 2q (mod p)`. -/
+private lemma y_sq_modEq_two_mul_q {p q : ℕ} {b h x y : ℤ} {R v : ℤ} {m : ℕ}
+    (hp : Nat.Prime p) (hm_sq : Squarefree m)
+    (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
+    (hRv : R ^ 2 + 2 * v = m) (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m) :
+    y ^ 2 ≡ 2 * q [ZMOD p] := by
+  have hp_R := dvd_R_of_dvd_v_dvd_m hp hRv hpv hpm
+  have hp_2qx_by := dvd_two_q_x_add_b_y_of_dvd_v_dvd_m hp hv hbqm hpv hpm
+  have h_div_p : (m / p : ℤ) * y ^ 2 ≡ (m / p : ℤ) * (2 * q) [ZMOD p] := by
+    have h_div_p : (4 * q * v : ℤ) ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
+      obtain ⟨k, hk⟩ := hpv
+      simp_all +decide [Int.modEq_iff_dvd]
+      obtain ⟨a, ha⟩ := hp_R
+      obtain ⟨b', hb'⟩ := hp_2qx_by
+      simp_all +decide [← eq_sub_iff_add_eq', ← mul_assoc]
+      exact ⟨a ^ 2 * 2 * q, by nlinarith⟩
+    have h_div_p : (4 * q * v : ℤ) ≡ (2 * q * x + b * y) ^ 2 + m * y ^ 2 [ZMOD p ^ 2] :=
+      Int.modEq_of_dvd ⟨0, by rw [hv]; linear_combination' hbqm * y ^ 2⟩
+    have h_div_p : (m : ℤ) * y ^ 2 ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
+      simp_all +decide [Int.ModEq]
+      rw [Int.emod_eq_emod_iff_emod_sub_eq_zero] at *
+      aesop
+    rw [Int.modEq_iff_dvd] at *
+    obtain ⟨k, hk⟩ := h_div_p
+    use k
+    have hpm' : (p : ℤ) ∣ m := mod_cast hpm
+    nlinarith [hp.two_le, Int.ediv_mul_cancel hpm']
+  have := Fact.mk hp
+  simp_all +decide [← ZMod.intCast_eq_intCast_iff]
+  cases h_div_p <;> simp_all +decide [ZMod.intCast_zmod_eq_zero_iff_dvd]
+  norm_cast at *
+  simp_all +decide [Nat.squarefree_iff_prime_squarefree]
+
 lemma p_mod4_of_dvd_v_dvd_m (p : ℕ) (q : ℕ) (b h x y : ℤ) (R v : ℤ) (m : ℕ)
     (hp : Nat.Prime p) (hp3 : p % 4 = 3) (hm_sq : Squarefree m)
     (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ))
     (hRv : R ^ 2 + 2 * v = m) (hpv : (p : ℤ) ∣ v) (hpm : (p : ℕ) ∣ m)
     (hjac : jacobiSym (-2 * q) p = 1) :
     False := by
-  have hp_R : (p : ℤ) ∣ R := Int.Prime.dvd_pow' hp <| by
-    rw [← Int.dvd_add_left (dvd_mul_of_dvd_right hpv _)]
-    exact hRv.symm ▸ Int.natCast_dvd_natCast.mpr hpm
-  have hp_2qx_by : (p : ℤ) ∣ (2 * q * x + b * y) := by
-    have h_sum : (p : ℤ) ∣ ((2 * q * x + b * y) ^ 2 + m * y ^ 2) := by
-      rw [← four_q_v_eq_sq_plus_m_y_sq hv hbqm]
-      exact hpv.mul_left (4 * q)
-    exact Int.Prime.dvd_pow' hp <|
-      (Int.dvd_add_left ((Int.natCast_dvd_natCast.mpr hpm).mul_right _)).mp h_sum
-  have h_y_sq_mod_p : y ^ 2 ≡ 2 * q [ZMOD p] := by
-    have h_div_p : (m / p : ℤ) * y ^ 2 ≡ (m / p : ℤ) * (2 * q) [ZMOD p] := by
-      have h_div_p : (4 * q * v : ℤ) ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
-        obtain ⟨k, hk⟩ := hpv
-        simp_all +decide [Int.modEq_iff_dvd]
-        obtain ⟨a, ha⟩ := hp_R
-        obtain ⟨b', hb'⟩ := hp_2qx_by
-        simp_all +decide [← eq_sub_iff_add_eq', ← mul_assoc]
-        exact ⟨a ^ 2 * 2 * q, by nlinarith⟩
-      have h_div_p : (4 * q * v : ℤ) ≡ (2 * q * x + b * y) ^ 2 + m * y ^ 2 [ZMOD p ^ 2] := by
-        exact Int.modEq_of_dvd ⟨0, by rw [hv]; linear_combination' hbqm * y ^ 2⟩
-      have h_div_p : (m : ℤ) * y ^ 2 ≡ (m : ℤ) * (2 * q) [ZMOD p ^ 2] := by
-        simp_all +decide [Int.ModEq]
-        rw [Int.emod_eq_emod_iff_emod_sub_eq_zero] at *
-        aesop
-      rw [Int.modEq_iff_dvd] at *
-      obtain ⟨k, hk⟩ := h_div_p
-      use k
-      have hpm' : (p : ℤ) ∣ m := mod_cast hpm
-      nlinarith [hp.two_le, Int.ediv_mul_cancel hpm']
-    have := Fact.mk hp
-    simp_all +decide [← ZMod.intCast_eq_intCast_iff]
-    cases h_div_p <;> simp_all +decide [ZMod.intCast_zmod_eq_zero_iff_dvd]
-    norm_cast at *
-    simp_all +decide [Nat.squarefree_iff_prime_squarefree]
   have h_jacobi_2q_p : jacobiSym (2 * q) p = 1 :=
     jacobiSym_eq_one_of_sq_modEq hp (fun h2q => absurd hjac (by
       rw [neg_mul, jacobiSym.mod_left, Int.emod_eq_zero_of_dvd h2q.neg_right,
-        jacobiSym.zero_left hp.one_lt]; decide)) h_y_sq_mod_p
+        jacobiSym.zero_left hp.one_lt]; decide))
+      (y_sq_modEq_two_mul_q hp hm_sq hv hbqm hRv hpv hpm)
   simp only [neg_mul] at hjac
   rw [jacobiSym.neg _ (hp.odd_of_ne_two (by omega)), ZMod.χ₄_nat_mod_four, hp3,
       h_jacobi_2q_p, mul_one] at hjac
