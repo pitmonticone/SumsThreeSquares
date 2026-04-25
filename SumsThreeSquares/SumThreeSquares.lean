@@ -304,9 +304,8 @@ private lemma linear_map_M_euclidean_apply (m q : ℕ) (t b : ℤ) (x : Euclidea
       Real.sqrt (2 * q) * x 0 + b / Real.sqrt (2 * q) * x 1 ∧
     (linear_map_M_euclidean m q t b x) 2 = Real.sqrt m / Real.sqrt (2 * q) * x 1 := by
   refine ⟨?_, ?_, ?_⟩ <;>
-    (change _ = _
-     simp [linear_map_M_euclidean, linear_map_M, Matrix.toLin'_apply, Matrix.vecHead,
-       Matrix.vecTail] <;> ring)
+    (simp [linear_map_M_euclidean, linear_map_M, Matrix.toLin'_apply, Matrix.vecHead,
+      Matrix.vecTail]; try ring)
 
 lemma quad_form_decomposition (m q : ℕ) (b h x y : ℤ) (hq : 0 < q)
     (hbqm : b ^ 2 - 4 * q * h = -m) :
@@ -389,8 +388,8 @@ discriminant is `-m < 0` (i.e. negative definite `-Δ`) and `q > 0`. -/
 private lemma quadform_nonneg {q : ℕ} {b h : ℤ} {m : ℕ} (hq : 0 < q)
     (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) (x y : ℤ) :
     0 ≤ (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 := by
-  have hm_nn : (0 : ℤ) ≤ (m : ℤ) := Int.natCast_nonneg m
-  nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), sq_nonneg (y : ℤ), hbqm]
+  nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), sq_nonneg (y : ℤ), hbqm,
+    Int.natCast_nonneg m]
 
 /-- The binary form `q·x² + b·x·y + h·y²` with `q > 0` and discriminant `-m < 0` has only the
 trivial zero: `qf = 0 ↔ x = y = 0`. (Reverse direction is trivial; stated as `x = 0 ∧ y = 0`.) -/
@@ -416,10 +415,7 @@ private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < 
 /-- The discriminant `b² - 4qh` of an integer binary quadratic form cannot equal `-1`:
 squares mod 4 are in `{0, 1}` but `-1 ≡ 3 (mod 4)`. -/
 private lemma discriminant_ne_neg_one (q : ℕ) (b h : ℤ) : b ^ 2 - 4 * (q : ℤ) * h ≠ -1 := by
-  rcases Int.even_or_odd b with ⟨k, rfl⟩ | hb
-  · grind
-  · have := Int.sq_mod_four_eq_one_of_odd hb
-    grind
+  rcases Int.even_or_odd b with ⟨k, rfl⟩ | hb <;> grind [Int.sq_mod_four_eq_one_of_odd]
 
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
     (hqt : t ^ 2 * 2 * q ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
