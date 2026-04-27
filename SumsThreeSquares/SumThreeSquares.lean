@@ -63,30 +63,29 @@ a single `c` satisfying all the congruences `c ≡ a p (mod p)` for `p ∈ prime
 together with `c ≡ 1 (mod 4)`. -/
 private lemma exists_crt_primeFactors_and_mod4 {m : ℕ} (hm_odd : Odd m) (a : ℕ → ℕ) :
     ∃ c : ℕ, (∀ p : ℕ, p ∣ m → Nat.Prime p → c ≡ a p [MOD p]) ∧ c ≡ 1 [MOD 4] := by
-  have h_crt_exists : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p ∧ p ∣ m) →
-      ∃ c : ℕ, (∀ p ∈ S, c ≡ a p [MOD p]) ∧ c ≡ 1 [MOD 4] := by
-    intro S hS
-    induction' S using Finset.induction with p S hpS ih
-    · aesop
-    obtain ⟨c, hc₁, hc₂⟩ := ih fun q hq => hS q (Finset.mem_insert_of_mem hq)
-    obtain ⟨x, hx⟩ : ∃ x : ℕ, x ≡ c [MOD 4 * Finset.prod S id] ∧ x ≡ a p [MOD p] := by
-      obtain ⟨hp_prime, hp_dvd⟩ := hS p (Finset.mem_insert_self _ _)
-      have hp_odd : Odd p := hp_prime.eq_two_or_odd'.resolve_left fun h => by
-        rw [h] at hp_dvd; have := Nat.odd_iff.mp hm_odd; omega
-      have h_cop : Nat.gcd (4 * Finset.prod S id) p = 1 :=
-        Nat.Coprime.mul_left (Nat.Coprime.pow_left 2 hp_odd.coprime_two_left)
-          (Nat.Coprime.prod_left fun q hq => Nat.coprime_comm.mp <|
-            hp_prime.coprime_iff_not_dvd.mpr fun h => hpS <|
-              ((Nat.prime_dvd_prime_iff_eq hp_prime
-                (hS q (Finset.mem_insert_of_mem hq)).1).mp h) ▸ hq)
-      exact ⟨_, (Nat.chineseRemainder h_cop c (a p)).2⟩
-    refine ⟨x, ?_, (hx.1.of_dvd (dvd_mul_right _ _)).trans hc₂⟩
-    intro q hq
-    rcases Finset.mem_insert.mp hq with rfl | hq
-    · exact hx.2
-    · exact (hx.1.of_dvd (dvd_mul_of_dvd_right (Finset.dvd_prod_of_mem _ hq) _)).trans (hc₁ q hq)
-  specialize @h_crt_exists (Nat.primeFactors m)
-  aesop
+  have hodd : ∀ p ∈ m.primeFactors, Odd p := fun p hp =>
+    (Nat.prime_of_mem_primeFactors hp).eq_two_or_odd'.resolve_left fun h2 => by
+      subst h2
+      have h2dvd := Nat.dvd_of_mem_primeFactors hp
+      have := Nat.odd_iff.mp hm_odd; omega
+  obtain ⟨c, hc⟩ := Nat.chineseRemainderOfFinset (fun p => if p = 4 then 1 else a p) id
+    (insert 4 m.primeFactors)
+    (fun p hp => by rcases Finset.mem_insert.mp hp with rfl | hp
+                    · norm_num
+                    · exact (Nat.prime_of_mem_primeFactors hp).ne_zero)
+    (fun p hp r hr hpr => by
+      rcases Finset.mem_insert.mp hp with rfl | hp <;>
+        rcases Finset.mem_insert.mp hr with rfl | hr
+      · exact absurd rfl hpr
+      · exact Nat.Coprime.pow_left 2 (hodd r hr).coprime_two_left
+      · exact Nat.coprime_comm.mp (Nat.Coprime.pow_left 2 (hodd p hp).coprime_two_left)
+      · exact (Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
+          (Nat.prime_of_mem_primeFactors hr)).mpr hpr)
+  refine ⟨c, fun p hp_dvd hp_prime => ?_, by simpa using hc 4 (Finset.mem_insert_self _ _)⟩
+  have hp_in : p ∈ insert 4 m.primeFactors := Finset.mem_insert_of_mem
+    (Nat.mem_primeFactors.mpr ⟨hp_prime, hp_dvd, hm_odd.pos.ne'⟩)
+  have hp_ne_4 : p ≠ 4 := fun h => absurd hp_prime (h ▸ by decide)
+  simpa [if_neg hp_ne_4] using hc p hp_in
 
 /-- Dirichlet's theorem, packaged as an existence statement: for `a : ℕ` coprime to `N > 0`,
 there is a prime `q > N` in the same residue class as `a` modulo `N`. -/
@@ -300,16 +299,13 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
       (Real.sqrt m / Real.sqrt (2 * q) * y)^2 < 2 * m := by
   obtain ⟨x, hx0, hxs, h⟩ :=
     classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
-      (fun x hx => by
-        simp only [Set.mem_preimage, Metric.mem_ball, dist_zero_right, map_neg, norm_neg] at *
-        exact hx)
+      (fun _ hx => by simpa using hx)
       (Convex.linear_preimage (convex_ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))) _)
       (vol_preimage_ball_gt_eight m q t b hm hq)
-  obtain ⟨R, hr⟩ := h 0
-  obtain ⟨S, hs⟩ := h 1
-  obtain ⟨T, ht⟩ := h 2
-  refine ⟨R, S, T, ?_, ?_⟩
-  · contrapose! hx0; ext i; fin_cases i <;> aesop
+  choose R hR using h
+  refine ⟨R 0, R 1, R 2, ?_, ?_⟩
+  · contrapose! hx0
+    ext i; rw [← hR i]; fin_cases i <;> aesop
   · obtain ⟨h0, h1, h2⟩ := linear_map_M_euclidean_apply m q t b x
     have h_norm_sq : (‖linear_map_M_euclidean m q t b x‖ ^ 2 : ℝ) < 2 * m := by
       have : ‖linear_map_M_euclidean m q t b x‖ < Real.sqrt (2 * m) := by simpa using hxs
@@ -317,7 +313,7 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
         Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m)]
     rw [EuclideanSpace.real_norm_sq_eq, Fin.sum_univ_three, h0, h1, h2] at h_norm_sq
     convert h_norm_sq using 1
-    push_cast [hr, hs, ht]; ring
+    push_cast [hR 0, hR 1, hR 2]; ring
 
 private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
     (hqt : 2 * q * t^2 ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
