@@ -197,31 +197,6 @@ private lemma exists_t_local_of_jacobi (p q : ℕ) (hp : Nat.Prime p)
   convert (hinv_2q.pow 2).neg using 1
   ring
 
-/-- If `m` is squarefree and an integer congruence `x ≡ y (mod p)` holds for every prime
-factor `p` of `m`, then the congruence lifts to `x ≡ y (mod m)`. -/
-private lemma int_modEq_of_forall_modEq_primeFactors_squarefree {m : ℕ} (hm : Squarefree m)
-    {x y : ℤ} (h : ∀ p ∈ m.primeFactors, x ≡ y [ZMOD (p : ℤ)]) : x ≡ y [ZMOD m] := by
-  rw [Int.modEq_iff_dvd, ← Nat.prod_primeFactors_of_squarefree hm, Nat.cast_prod]
-  exact Finset.prod_dvd_of_coprime
-    (fun _ hp _ hq hpq => ((Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
-      (Nat.prime_of_mem_primeFactors hq)).mpr hpq).cast)
-    (fun p hp => Int.modEq_iff_dvd.mp (h p hp))
-
-/-- Integer CRT over the prime factors of a squarefree number: given per-prime residue data,
-produce a single integer matching all the congruences simultaneously. -/
-private lemma exists_int_crt_primeFactors_squarefree {m : ℕ} (t : ℕ → ℤ) :
-    ∃ x : ℤ, ∀ p ∈ m.primeFactors, x ≡ t p [ZMOD (p : ℤ)] := by
-  obtain ⟨c, hc⟩ := Nat.chineseRemainderOfFinset (fun p => ((t p).emod p).toNat) id m.primeFactors
-    (fun p hp => (Nat.prime_of_mem_primeFactors hp).ne_zero)
-    (fun p hp q hq hpq => (Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
-      (Nat.prime_of_mem_primeFactors hq)).mpr hpq)
-  refine ⟨(c : ℤ), fun p hp => ?_⟩
-  have hp_ne : (p : ℤ) ≠ 0 := by exact_mod_cast (Nat.prime_of_mem_primeFactors hp).ne_zero
-  have h_b : (((t p).emod p).toNat : ℤ) = (t p) % p :=
-    Int.toNat_of_nonneg (Int.emod_nonneg _ hp_ne)
-  have h1 : (c : ℤ) ≡ ((t p).emod p).toNat [ZMOD (p : ℤ)] := by exact_mod_cast hc p hp
-  exact (h_b ▸ h1).trans (Int.emod_emod_of_dvd _ dvd_rfl)
-
 lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q)
     (h_jacobi : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1) :
     ∃ t : ℤ, (2 * q : ℤ) * t^2 ≡ -1 [ZMOD m] := by
@@ -237,9 +212,21 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
       rintro rfl
       exact not_jacobiSym_eq_one_of_dvd hq_prime (by simp) (h_jacobi q hpm hq_prime)
   choose! t ht using h_tp
-  obtain ⟨x, hx⟩ := exists_int_crt_primeFactors_squarefree (m := m) t
-  refine ⟨x, int_modEq_of_forall_modEq_primeFactors_squarefree hm_sq fun p hp => ?_⟩
-  exact (((hx p hp).pow 2).mul_left _).trans (ht p hp)
+  obtain ⟨c, hc⟩ := Nat.chineseRemainderOfFinset (fun p => ((t p).emod p).toNat) id
+    m.primeFactors (fun p hp => (Nat.prime_of_mem_primeFactors hp).ne_zero)
+    (fun _ hp _ hq hpq => (Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
+      (Nat.prime_of_mem_primeFactors hq)).mpr hpq)
+  refine ⟨c, ?_⟩
+  rw [Int.modEq_iff_dvd, ← Nat.prod_primeFactors_of_squarefree hm_sq, Nat.cast_prod]
+  refine Finset.prod_dvd_of_coprime
+    (fun _ hp _ hq hpq => ((Nat.coprime_primes (Nat.prime_of_mem_primeFactors hp)
+      (Nat.prime_of_mem_primeFactors hq)).mpr hpq).cast)
+    (fun p hp => Int.modEq_iff_dvd.mp ?_)
+  have hp_ne : (p : ℤ) ≠ 0 := by exact_mod_cast (Nat.prime_of_mem_primeFactors hp).ne_zero
+  have h1 : (c : ℤ) ≡ ((t p).emod p).toNat [ZMOD (p : ℤ)] := by exact_mod_cast hc p hp
+  have hcp : (c : ℤ) ≡ t p [ZMOD (p : ℤ)] :=
+    (Int.toNat_of_nonneg (Int.emod_nonneg _ hp_ne) ▸ h1).trans (Int.emod_emod_of_dvd _ dvd_rfl)
+  exact ((hcp.pow 2).mul_left _).trans (ht p hp)
 
 noncomputable def linear_map_M (m q : ℕ) (t b : ℤ) : (Fin 3 → ℝ) →ₗ[ℝ] (Fin 3 → ℝ) :=
   Matrix.toLin' (!![
@@ -292,17 +279,16 @@ private lemma vol_preimage_ball_gt_eight (m q : ℕ) (t b : ℤ) (hm : 0 < m) (h
         Metric.ball (0 : EuclideanSpace ℝ (Fin 3)) (Real.sqrt (2 * m))) := by
   have hdet_ne : LinearMap.det (linear_map_M_euclidean m q t b) ≠ 0 := by
     rw [det_linear_map_M_euclidean m q t b hq]; positivity
-  have h8 : ((2 : ENNReal) ^ 3) = ENNReal.ofReal 8 := by norm_num
-  have hrt : (Real.sqrt (2 * m)) ^ 3 = 2 * Real.sqrt 2 * ((m : ℝ) * Real.sqrt m) := by
-    rw [pow_succ, Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m),
-        Real.sqrt_mul (by norm_num : (0:ℝ) ≤ 2)]
-    ring
   rw [MeasureTheory.Measure.addHaar_preimage_linearMap _ hdet_ne,
       det_linear_map_M_euclidean m q t b hq, EuclideanSpace.volume_ball_fin_three,
       abs_inv, abs_of_nonneg (by positivity),
       ← ENNReal.ofReal_pow (Real.sqrt_nonneg _), ← ENNReal.ofReal_mul (by positivity),
-      ← ENNReal.ofReal_mul (by positivity), h8,
-      ENNReal.ofReal_lt_ofReal_iff (by positivity), hrt]
+      ← ENNReal.ofReal_mul (by positivity),
+      (by norm_num : ((2 : ENNReal) ^ 3) = ENNReal.ofReal 8),
+      ENNReal.ofReal_lt_ofReal_iff (by positivity)]
+  rw [(by rw [pow_succ, Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m),
+        Real.sqrt_mul (by norm_num : (0:ℝ) ≤ 2)]; ring :
+      (Real.sqrt (2 * m)) ^ 3 = 2 * Real.sqrt 2 * ((m : ℝ) * Real.sqrt m))]
   field_simp
   nlinarith [Real.pi_gt_three, Real.sqrt_nonneg 2, Real.sq_sqrt zero_le_two,
     (by positivity : 0 < (m : ℝ) * Real.sqrt m)]
