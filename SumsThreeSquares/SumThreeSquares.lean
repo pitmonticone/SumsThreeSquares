@@ -14,12 +14,12 @@ def IsSumOfThreeSquares (n : ℕ) : Prop :=
   ∃ a b c : ℕ, a ^ 2 + b ^ 2 + c ^ 2 = n
 
 /-- If the `p`-adic valuation of `n` is odd, then `p ∣ n` (since `padicValInt p n = 0`
-when `p ∤ n`, and `0` is even). -/
+when `p ∤ n`, and `0` is not odd). -/
 private lemma dvd_of_odd_padicValInt {p : ℕ} {n : ℤ}
-    (h : ¬ Even (padicValInt p n)) : (p : ℤ) ∣ n := by
-  contrapose! h
-  rw [padicValInt.eq_zero_of_not_dvd h]
-  decide
+    (h : Odd (padicValInt p n)) : (p : ℤ) ∣ n := by
+  by_contra hpn
+  rw [padicValInt.eq_zero_of_not_dvd hpn] at h
+  exact absurd h (by decide)
 
 /-- If `p` is prime and `p ∣ k`, then `jacobiSym k p ≠ 1` (it is in fact `0`). -/
 private lemma not_jacobiSym_eq_one_of_dvd {p : ℕ} (hp : Nat.Prime p) {k : ℤ} (hpk : (p : ℤ) ∣ k) :
@@ -492,7 +492,7 @@ lemma jacobi_neg_d_of_dvd_sq_add (p : ℕ) (a d b' : ℤ) (hp : Nat.Prime p)
 
 lemma jacobi_neg_d_of_odd_padicVal (p : ℕ) (a d b' : ℤ) (hp : Nat.Prime p)
     (hp_not_dvd_d : ¬ (p : ℤ) ∣ d)
-    (h_odd_val : ¬ Even (padicValInt p (a ^ 2 + d * b' ^ 2))) :
+    (h_odd_val : Odd (padicValInt p (a ^ 2 + d * b' ^ 2))) :
     jacobiSym (-d) p = 1 := by
   induction' n : Int.natAbs a + Int.natAbs b' using Nat.strong_induction_on with n ih
     generalizing a b'
@@ -540,7 +540,7 @@ private lemma jacobiSym_eq_one_of_sq_modEq {p : ℕ} (hp : Nat.Prime p) {a R : �
 /-- For an odd prime `p` coprime to `q` and dividing a nonzero integer `v`,
 `padicValInt p (4qv) = padicValInt p v`. -/
 private lemma padicValInt_four_q_v {p : ℕ} {q v : ℤ}
-    (hp : Nat.Prime p) (hp_odd : p ≠ 2) (hpq : ¬ (p : ℤ) ∣ q) (hpv : ¬ Even (padicValInt p v)) :
+    (hp : Nat.Prime p) (hp_odd : p ≠ 2) (hpq : ¬ (p : ℤ) ∣ q) (hpv : Odd (padicValInt p v)) :
     padicValInt p (4 * q * v) = padicValInt p v := by
   have := Fact.mk hp
   rw [padicValInt.mul, padicValInt.mul] <;> norm_num
@@ -554,7 +554,7 @@ lemma p_mod4_eq1_of_dvd_v_not_dvd_m (p : ℕ) (q : ℤ) (b h x y v R m : ℤ)
     (hv : v = q * x ^ 2 + b * x * y + h * y ^ 2)
     (hbqm : b ^ 2 - 4 * q * h = -m)
     (hRv : R ^ 2 + 2 * v = m)
-    (hpv : ¬ Even (padicValInt p v))
+    (hpv : Odd (padicValInt p v))
     (hpm : ¬ (p : ℤ) ∣ m) :
     p % 4 = 1 := by
   have hpv_dvd : (p : ℤ) ∣ v := dvd_of_odd_padicValInt hpv
@@ -653,7 +653,8 @@ lemma even_padicVal_of_mod4_eq3 (p : ℕ) (q : ℕ) (b h x y : ℤ) (R : ℤ) (v
   have := Fact.mk hp
   have hp2 : p ≠ 2 := by rintro rfl; omega
   have hEven : Even (padicValInt p v) := by
-    by_contra h_odd
+    by_contra h_even
+    have h_odd : Odd (padicValInt p v) := Nat.not_even_iff_odd.mp h_even
     by_cases hpm : (p : ℕ) ∣ m
     · exact p_mod4_of_dvd_v_dvd_m p q b h x y R v m hp hp3 hm_sq hv_def hbqm hRv
         (dvd_of_odd_padicValInt h_odd) hpm (hjac p hpm hp)
