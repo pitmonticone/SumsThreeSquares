@@ -89,16 +89,15 @@ private lemma exists_crt_primeFactors_and_mod4 {m : ℕ} (hm_odd : Odd m) (a : �
   simpa [if_neg hp_ne_4] using hc p hp_in
 
 /-- Dirichlet's theorem, packaged as an existence statement: for `a : ℕ` coprime to `N > 0`,
-there is a prime `q > N` in the same residue class as `a` modulo `N`. -/
-private lemma exists_prime_gt_eq_mod {a N : ℕ} (hN : 0 < N) (hcop : Nat.Coprime a N) :
-    ∃ q : ℕ, Nat.Prime q ∧ q % N = a % N ∧ N < q := by
+there is a prime in the same residue class as `a` modulo `N`. -/
+private lemma exists_prime_eq_mod {a N : ℕ} (hN : 0 < N) (hcop : Nat.Coprime a N) :
+    ∃ q : ℕ, Nat.Prime q ∧ q % N = a % N := by
   have : NeZero N := ⟨hN.ne'⟩
   have h_dir : Set.Infinite {q : ℕ | Nat.Prime q ∧ q % N = a % N} := by
     convert Nat.infinite_setOf_prime_and_eq_mod (q := N) (a := (a : ZMod N))
       ((ZMod.isUnit_iff_coprime a N).mpr hcop) using 1
     norm_num [← ZMod.natCast_eq_natCast_iff']
-  obtain ⟨q, ⟨hq_prime, hq_mod⟩, hq_gt⟩ := h_dir.exists_gt N
-  exact ⟨q, hq_prime, hq_mod, hq_gt⟩
+  exact h_dir.nonempty
 
 lemma exists_prime_aux (m : ℕ) (hm_mod : m % 8 = 3) :
     ∃ q : ℕ, Nat.Prime q ∧ q % 4 = 1 ∧ ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1 := by
@@ -113,7 +112,7 @@ lemma exists_prime_aux (m : ℕ) (hm_mod : m % 8 = 3) :
     refine Nat.Coprime.mul_right (ha_crt_4.gcd_eq.trans (by norm_num)) ?_
     refine Nat.coprime_of_dvd' fun k hk hk₁ hk₂ => ?_
     grind [Nat.ModEq, Nat.dvd_iff_mod_eq_zero]
-  obtain ⟨q, hq_prime, hq_mod, -⟩ := exists_prime_gt_eq_mod (by omega : 0 < 4 * m) ha_crt_cop
+  obtain ⟨q, hq_prime, hq_mod⟩ := exists_prime_eq_mod (by omega : 0 < 4 * m) ha_crt_cop
   refine ⟨q, hq_prime, ?_, fun p hp hp_prime => ?_⟩
   · rw [← Nat.mod_mod_of_dvd q (dvd_mul_right 4 m), hq_mod,
         Nat.mod_mod_of_dvd _ (dvd_mul_right 4 m)]
@@ -166,7 +165,7 @@ There exist integers $b$ and $h$ such that $b$ is odd and $b^2 - 4qh = -m$.
 -/
 lemma exists_b_h (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q) (hq_mod : q % 4 = 1)
     (h_jacobi : jacobiSym (-m) q = 1) :
-    ∃ b h : ℤ, b % 2 = 1 ∧ b^2 - 4 * q * h = -m := by
+    ∃ b h : ℤ, b^2 - 4 * q * h = -m := by
   obtain ⟨b, hb_mod_q, hb_odd⟩ :=
     exists_odd_sq_mod_prime_of_jacobi_eq_one m q hq_prime hq_mod h_jacobi
   have h_cop : ((4 : ℤ).natAbs).Coprime ((q : ℤ).natAbs) :=
@@ -175,7 +174,7 @@ lemma exists_b_h (m : ℕ) (q : ℕ) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime 
   have hb_mod : b ^ 2 ≡ -↑m [ZMOD (4 * ↑q : ℤ)] :=
     (Int.modEq_and_modEq_iff_modEq_mul h_cop).mp
       ⟨by grind [Int.ModEq, Int.sq_mod_four_eq_one_of_odd], hb_mod_q⟩
-  exact ⟨b, (b^2 - -m) / (4 * q), hb_odd,
+  exact ⟨b, (b^2 + m) / (4 * q),
     by have := Int.ediv_mul_cancel hb_mod.symm.dvd; grind⟩
 
 /-
@@ -343,11 +342,10 @@ private lemma quadform_eq_zero_imp_xy_zero {q : ℕ} {b h : ℤ} {m : ℕ} (hq :
     (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) {x y : ℤ}
     (h_zero : (q : ℤ) * x ^ 2 + b * x * y + h * y ^ 2 = 0) :
     x = 0 ∧ y = 0 := by
-  have hm' : (0 : ℤ) < (m : ℤ) := by exact_mod_cast hm
   by_cases hy : y = 0
   · exact ⟨by subst hy; nlinarith [sq_nonneg x, hq, h_zero], hy⟩
-  · refine absurd h_zero ?_
-    nlinarith [sq_nonneg (2 * (q : ℤ) * x + b * y), mul_self_pos.mpr hy, hbqm]
+  · exact absurd h_zero <| by
+      nlinarith [sq_nonneg (2 * (q:ℤ)*x + b*y), mul_self_pos.mpr hy, hbqm, Int.natCast_pos.mpr hm]
 
 /-- A nonnegative integer `n ≡ 0 (mod m)` with `n < 2m` is either `0` or `m`. -/
 private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < m)
@@ -594,7 +592,7 @@ lemma even_padicVal_of_mod4_eq3 (p : ℕ) (q : ℕ) (b h x y : ℤ) (R : ℤ) (v
 theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m)
     (hm_mod : m % 8 = 3) : IsSumOfThreeSquares m := by
   obtain ⟨q, hq_prime, hq_mod, hjac⟩ := exists_prime_aux m hm_mod
-  obtain ⟨b, h, _, hbqm⟩ :=
+  obtain ⟨b, h, hbqm⟩ :=
     exists_b_h m q hm_mod hq_prime hq_mod (jacobi_neg_m_q m q hm_mod hq_mod hjac)
   obtain ⟨t, hqt⟩ := exists_t m q hm_sq hm_mod hq_prime hjac
   obtain ⟨x, y, R, v, hv_def, hRv, hv_pos⟩ :=
