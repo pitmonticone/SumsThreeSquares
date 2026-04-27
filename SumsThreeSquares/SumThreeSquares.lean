@@ -204,13 +204,13 @@ lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (
     intro p hp
     have hp_prime := Nat.prime_of_mem_primeFactors hp
     have hpm := Nat.dvd_of_mem_primeFactors hp
-    refine exists_t_local_of_jacobi p q hp_prime (Nat.Coprime.mul_left ?_ ?_)
+    refine exists_t_local_of_jacobi p q hp_prime (Nat.Coprime.mul_left
+      (Nat.prime_two.coprime_iff_not_dvd.mpr fun h2p => by
+        have : 2 ∣ m := dvd_trans h2p hpm; omega)
+      ((Nat.coprime_primes hq_prime hp_prime).mpr fun heq => by
+        subst heq
+        exact not_jacobiSym_eq_one_of_dvd hq_prime (by simp) (h_jacobi q hpm hq_prime)))
       (h_jacobi p hpm hp_prime)
-    · exact Nat.prime_two.coprime_iff_not_dvd.mpr fun h2p => by
-        have : 2 ∣ m := dvd_trans h2p hpm; omega
-    · rw [Nat.coprime_primes hq_prime hp_prime]
-      rintro rfl
-      exact not_jacobiSym_eq_one_of_dvd hq_prime (by simp) (h_jacobi q hpm hq_prime)
   choose! t ht using h_tp
   obtain ⟨c, hc⟩ := Nat.chineseRemainderOfFinset (fun p => ((t p).emod p).toNat) id
     m.primeFactors (fun p hp => (Nat.prime_of_mem_primeFactors hp).ne_zero)
@@ -285,10 +285,10 @@ private lemma vol_preimage_ball_gt_eight (m q : ℕ) (t b : ℤ) (hm : 0 < m) (h
       ← ENNReal.ofReal_pow (Real.sqrt_nonneg _), ← ENNReal.ofReal_mul (by positivity),
       ← ENNReal.ofReal_mul (by positivity),
       (by norm_num : ((2 : ENNReal) ^ 3) = ENNReal.ofReal 8),
-      ENNReal.ofReal_lt_ofReal_iff (by positivity)]
-  rw [(by rw [pow_succ, Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m),
-        Real.sqrt_mul (by norm_num : (0:ℝ) ≤ 2)]; ring :
-      (Real.sqrt (2 * m)) ^ 3 = 2 * Real.sqrt 2 * ((m : ℝ) * Real.sqrt m))]
+      ENNReal.ofReal_lt_ofReal_iff (by positivity),
+      (by rw [pow_succ, Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m),
+          Real.sqrt_mul (by norm_num : (0:ℝ) ≤ 2)]; ring :
+        (Real.sqrt (2 * m)) ^ 3 = 2 * Real.sqrt 2 * ((m : ℝ) * Real.sqrt m))]
   field_simp
   nlinarith [Real.pi_gt_three, Real.sqrt_nonneg 2, Real.sq_sqrt zero_le_two,
     (by positivity : 0 < (m : ℝ) * Real.sqrt m)]
@@ -311,14 +311,13 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
   refine ⟨R, S, T, ?_, ?_⟩
   · contrapose! hx0; ext i; fin_cases i <;> aesop
   · obtain ⟨h0, h1, h2⟩ := linear_map_M_euclidean_apply m q t b x
-    have hxs' : ‖linear_map_M_euclidean m q t b x‖ < Real.sqrt (2 * m) := by simpa using hxs
     have h_norm_sq : (‖linear_map_M_euclidean m q t b x‖ ^ 2 : ℝ) < 2 * m := by
+      have : ‖linear_map_M_euclidean m q t b x‖ < Real.sqrt (2 * m) := by simpa using hxs
       nlinarith [norm_nonneg (linear_map_M_euclidean m q t b x),
         Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m)]
     rw [EuclideanSpace.real_norm_sq_eq, Fin.sum_univ_three, h0, h1, h2] at h_norm_sq
     convert h_norm_sq using 1
-    push_cast [hr, hs, ht]
-    ring
+    push_cast [hr, hs, ht]; ring
 
 private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
     (hqt : 2 * q * t^2 ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
