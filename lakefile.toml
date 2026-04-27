@@ -15,5 +15,10 @@ rev = "v4.29.1"
 name = "checkdecls"
 git = "https://github.com/PatrickMassot/checkdecls.git"
 
+[[require]]
+name = "repl"
+git = "https://github.com/leanprover-community/repl"
+rev = "v4.29.0"
+
 [[lean_lib]]
 name = "SumsThreeSquares"
