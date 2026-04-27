@@ -67,7 +67,8 @@ private lemma exists_crt_primeFactors_and_mod4 {m : ℕ} (hm_odd : Odd m) (a : �
     (Nat.prime_of_mem_primeFactors hp).eq_two_or_odd'.resolve_left fun h2 => by
       subst h2
       have h2dvd := Nat.dvd_of_mem_primeFactors hp
-      have := Nat.odd_iff.mp hm_odd; omega
+      have := Nat.odd_iff.mp hm_odd
+      omega
   obtain ⟨c, hc⟩ := Nat.chineseRemainderOfFinset (fun p => if p = 4 then 1 else a p) id
     (insert 4 m.primeFactors)
     (fun p hp => by rcases Finset.mem_insert.mp hp with rfl | hp
@@ -264,7 +265,8 @@ lemma quad_form_decomposition (m q : ℕ) (b h x y : ℤ) (hq : 0 < q)
     (Real.sqrt (2 * q) * x + (b : ℝ) / Real.sqrt (2 * q) * y) ^ 2 +
       (Real.sqrt m / Real.sqrt (2 * q) * y) ^ 2 =
       2 * ((q : ℝ) * x ^ 2 + (b : ℝ) * x * y + (h : ℝ) * y ^ 2) := by
-  have hb2 : (b : ℝ) ^ 2 = 4 * q * h - m := by exact_mod_cast (by grind : (b : ℤ) ^ 2 = 4 * q * h - m)
+  have hb2 : (b : ℝ) ^ 2 = 4 * q * h - m :=
+    by exact_mod_cast (by grind : (b : ℤ) ^ 2 = 4 * q * h - m)
   field_simp
   rw [Real.sq_sqrt (by positivity : (0 : ℝ) ≤ 2 * q),
     Real.sq_sqrt (by positivity : (0 : ℝ) ≤ (m : ℝ))]
@@ -313,7 +315,8 @@ private lemma exists_lattice_xyz_lt_two_m (m q : ℕ) (t b : ℤ) (hm : 0 < m) (
         Real.sq_sqrt (by positivity : (0:ℝ) ≤ 2 * m)]
     rw [EuclideanSpace.real_norm_sq_eq, Fin.sum_univ_three, h0, h1, h2] at h_norm_sq
     convert h_norm_sq using 1
-    push_cast [hR 0, hR 1, hR 2]; ring
+    push_cast [hR 0, hR 1, hR 2]
+    ring
 
 private lemma rst_modEq_zero (m q : ℕ) (t b h x y z : ℤ)
     (hqt : 2 * q * t^2 ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * q * h = -m) :
@@ -398,7 +401,6 @@ lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < 
       · exact absurd hbqm (discriminant_ne_neg_one q b h)
       · have hz : z ^ 2 * (m + 1 + 1) = 1 := by nlinarith
         nlinarith [hz]
-
 
 lemma jacobi_neg_d_of_dvd_sq_add (p : ℕ) (a d b' : ℤ) (hp : Nat.Prime p)
     (hp_dvd : (p : ℤ) ∣ a ^ 2 + d * b' ^ 2) (hp_not_dvd_d : ¬ (p : ℤ) ∣ d)
