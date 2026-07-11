@@ -23,4 +23,4 @@ theorem classical_exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure
     exists_ne_zero_mem_lattice_of_measure_mul_two_pow_lt_measure fund h_symm h_conv hmeas
   refine ⟨x, fun h0 => hx_ne (Subtype.ext h0), hx_mem, fun i => ?_⟩
   obtain ⟨m, hm⟩ := (b.mem_span_iff_repr_mem ℤ x.1).mp x.2 i
-  exact ⟨m, by simpa using hm⟩
+  exact ⟨m, by simpa [b, EuclideanSpace.basisFun_repr] using hm⟩
