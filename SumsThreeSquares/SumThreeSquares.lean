@@ -359,12 +359,11 @@ private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < 
 squares mod 4 are in `{0, 1}` but `-1 ≡ 3 (mod 4)`. -/
 private lemma discriminant_ne_neg_one (q : ℕ) (b h : ℤ) : b ^ 2 - 4 * (q : ℤ) * h ≠ -1 := by
   intro hcon
+  have hcon' : b ^ 2 = 4 * ((q : ℤ) * h) - 1 := by linarith [hcon]
   rcases Int.even_or_odd b with ⟨k, rfl⟩ | hodd
-  · have h1 : (k + k) ^ 2 = 4 * k ^ 2 := by ring
-    have h2 : (k + k) ^ 2 = 4 * ((q : ℤ) * h) - 1 := by linarith [hcon]
+  · have : (k + k) ^ 2 = 4 * k ^ 2 := by ring
     omega
-  · have key := Int.sq_mod_four_eq_one_of_odd hodd
-    have h2 : b ^ 2 = 4 * ((q : ℤ) * h) - 1 := by linarith [hcon]
+  · have := Int.sq_mod_four_eq_one_of_odd hodd
     omega
 
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
@@ -608,11 +607,8 @@ theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m
       (Nat.prime_of_mem_primeFactors hp) hp3 hm_sq hv_pos hv_def hbqm hRv hjac
   obtain ⟨a, b, c, habc⟩ : ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2 := by
     obtain ⟨s, t, hst⟩ := h2v
-    refine ⟨R, (s : ℤ), (t : ℤ), ?_⟩
-    have hcast : (s : ℤ) ^ 2 + (t : ℤ) ^ 2 = 2 * (v : ℤ) := by exact_mod_cast hst.symm
-    linarith [hRv]
+    exact ⟨R, s, t, by zify at hst; linarith [hRv, hst]⟩
   refine ⟨a.natAbs, b.natAbs, c.natAbs, ?_⟩
-  have h : (a.natAbs : ℤ) ^ 2 + (b.natAbs : ℤ) ^ 2 + (c.natAbs : ℤ) ^ 2 = (m : ℤ) := by
-    simp only [Int.natCast_natAbs, sq_abs]; linarith [habc]
-  exact_mod_cast h
+  zify [Int.natCast_natAbs, sq_abs]
+  linarith [habc]
 end
