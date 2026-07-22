@@ -607,6 +607,6 @@ theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m
     obtain ⟨s, t, hst⟩ := h2v
     exact ⟨R, s, t, by zify at hst; linarith [hRv, hst]⟩
   refine ⟨a.natAbs, b.natAbs, c.natAbs, ?_⟩
-  zify [Int.natCast_natAbs, sq_abs]
-  linarith [habc]
+  zify [Int.natCast_natAbs, sq_abs, habc]
+
 end
