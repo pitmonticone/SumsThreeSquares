@@ -361,10 +361,8 @@ private lemma discriminant_ne_neg_one (q : ℕ) (b h : ℤ) : b ^ 2 - 4 * (q : �
   intro hcon
   have hcon' : b ^ 2 = 4 * ((q : ℤ) * h) - 1 := by linarith [hcon]
   rcases Int.even_or_odd b with ⟨k, rfl⟩ | hodd
-  · have : (k + k) ^ 2 = 4 * k ^ 2 := by ring
-    omega
-  · have := Int.sq_mod_four_eq_one_of_odd hodd
-    omega
+  · grind
+  · grind [Int.sq_mod_four_eq_one_of_odd]
 
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
     (hqt : 2 * q * t ^ 2 ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
