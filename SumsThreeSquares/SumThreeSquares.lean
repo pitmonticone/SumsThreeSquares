@@ -193,8 +193,7 @@ private lemma exists_t_local_of_jacobi (p q : ℕ) (hp : Nat.Prime p)
     Int.mod_coprime hp_cop
   refine ⟨x.val * inv_2q, ?_⟩
   convert hs.mul_left (2 * q * inv_2q ^ 2) |>.trans ?_ using 1 <;> ring_nf
-  convert (hinv_2q.pow 2).neg using 1
-  ring
+  convert (hinv_2q.pow 2).neg using 1 <;> ring
 
 lemma exists_t (m : ℕ) (q : ℕ) (hm_sq : Squarefree m) (hm_mod : m % 8 = 3) (hq_prime : Nat.Prime q)
     (h_jacobi : ∀ p, p ∣ m → Nat.Prime p → jacobiSym (-2 * q) p = 1) :
@@ -359,7 +358,11 @@ private lemma eq_zero_or_eq_of_nonneg_modEq_zero_lt_two_mul {m : ℤ} (hm : 0 < 
 /-- The discriminant `b² - 4qh` of an integer binary quadratic form cannot equal `-1`:
 squares mod 4 are in `{0, 1}` but `-1 ≡ 3 (mod 4)`. -/
 private lemma discriminant_ne_neg_one (q : ℕ) (b h : ℤ) : b ^ 2 - 4 * (q : ℤ) * h ≠ -1 := by
-  rcases Int.even_or_odd b with ⟨k, rfl⟩ | hb <;> grind [Int.sq_mod_four_eq_one_of_odd]
+  intro hcon
+  have hcon' : b ^ 2 = 4 * ((q : ℤ) * h) - 1 := by linarith [hcon]
+  rcases Int.even_or_odd b with ⟨k, rfl⟩ | hodd
+  · grind
+  · grind [Int.sq_mod_four_eq_one_of_odd]
 
 lemma exists_Rv_from_Minkowski (m q : ℕ) (t b h : ℤ) (hm : 0 < m) (hq : 0 < q)
     (hqt : 2 * q * t ^ 2 ≡ -1 [ZMOD m]) (hbqm : b ^ 2 - 4 * (q : ℤ) * h = -(m : ℤ)) :
@@ -600,6 +603,10 @@ theorem blueprint_case_mod8_eq3 (m : ℕ) (hm_sq : Squarefree m) (hm_pos : 0 < m
   have h2v : ∃ a b : ℕ, 2 * v = a ^ 2 + b ^ 2 := Nat.eq_sq_add_sq_iff.mpr fun p hp hp3 =>
     even_padicVal_of_mod4_eq3 p q b h x y R v m
       (Nat.prime_of_mem_primeFactors hp) hp3 hm_sq hv_pos hv_def hbqm hRv hjac
-  obtain ⟨a, b, c, habc⟩ : ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2 := by grind +qlia
-  exact ⟨a.natAbs, b.natAbs, c.natAbs, by grind [Int.natCast_natAbs, sq_abs]⟩
+  obtain ⟨a, b, c, habc⟩ : ∃ a b c : ℤ, (m : ℤ) = a ^ 2 + b ^ 2 + c ^ 2 := by
+    obtain ⟨s, t, hst⟩ := h2v
+    exact ⟨R, s, t, by zify at hst; linarith [hRv, hst]⟩
+  refine ⟨a.natAbs, b.natAbs, c.natAbs, ?_⟩
+  zify [Int.natCast_natAbs, sq_abs, habc]
+
 end
