@@ -1,0 +1,270 @@
+\documentclass{amsart}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\vol}{\operatorname{vol}}
+\newcommand{\SL}{\mathrm{SL}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{proposition}[definition]{Proposition}
+
+\begin{document}
+
+\title{Unimodular Positive-Definite Ternary Quadratic Forms}
+\author{}
+\date{}
+\maketitle
+
+\section{Quadratic forms and equivalence}
+
+\begin{definition}[Integral quadratic form, Gram matrix, determinant]
+An \emph{integral ternary quadratic form} is a function $F:\Z^3\to \Z$ of the form
+\[
+F(x,y,z)=ax^2+by^2+cz^2+2dxy+2exz+2fyz
+\quad(a,b,c,d,e,f\in\Z).
+\]
+Equivalently, there is a symmetric matrix $M_F\in M_3(\Z)$ such that
+\[
+F(\mathbf{x})=\mathbf{x}^T M_F \mathbf{x}\qquad(\mathbf{x}\in\Z^3).
+\]
+The \emph{determinant} of $F$ is $\Delta(F):=\det(M_F)$.
+\end{definition}
+
+\begin{definition}[Positive definite]
+An integral quadratic form $F$ with Gram matrix $M_F$ is \emph{positive definite} if
+$\mathbf{x}^T M_F \mathbf{x}>0$ for all $\mathbf{x}\in\R^3\setminus\{0\}$.
+\end{definition}
+
+\begin{definition}[Proper equivalence]
+Two integral ternary quadratic forms $F$ and $G$ are \emph{properly equivalent} if there exists
+$A\in \SL_3(\Z)$ such that
+\[
+M_G = A^T M_F A.
+\]
+\end{definition}
+
+\section{Minkowski's theorem}
+
+\begin{definition}[Centrally symmetric convex body]
+A set $K\subset \R^n$ is a \emph{centrally symmetric convex body} if it is convex, measurable,
+has nonempty interior, and satisfies $K=-K$.
+\end{definition}
+
+\begin{lemma}[Blichfeldt]\label{lem:blichfeldt}
+Let $S\subset \R^n$ be measurable. If $\vol(S)>1$, then there exist distinct $x,y\in S$ with
+$x-y\in \Z^n\setminus\{0\}$.
+\end{lemma}
+
+\begin{proof}
+Let $Q=[0,1)^n$. For each $m\in\Z^n$, set $S_m=S\cap(m+Q)$, so the sets $S_m$ are pairwise disjoint and
+$\vol(S)=\sum_{m\in\Z^n}\vol(S_m)$.
+
+For each $m$, translate $S_m$ by $-m$ into $Q$ and denote the image by $T_m\subset Q$. Then $\vol(T_m)=\vol(S_m)$.
+If all the sets $T_m$ were pairwise disjoint, then
+\[
+\sum_{m\in\Z^n}\vol(T_m) \le \vol(Q)=1,
+\]
+contradicting $\sum_m \vol(T_m)=\sum_m \vol(S_m)=\vol(S)>1$.
+Hence $T_m\cap T_{m'}\neq\varnothing$ for some $m\neq m'$. Choose $u\in T_m\cap T_{m'}$, and let
+$x=u+m\in S_m\subset S$ and $y=u+m'\in S_{m'}\subset S$. Then $x\neq y$ and $x-y=m-m'\in\Z^n\setminus\{0\}$.
+\end{proof}
+
+\begin{theorem}[Minkowski for $\Z^n$]\label{thm:minkowski}
+Let $K\subset \R^n$ be a centrally symmetric convex body. If $\vol(K)>2^n$, then $K$ contains a nonzero point of $\Z^n$.
+\end{theorem}
+
+\begin{proof}
+Set $S=\tfrac12 K$. Then $S$ is measurable and $\vol(S)=\vol(K)/2^n>1$.
+By Lemma~\ref{lem:blichfeldt} there exist $x\neq y$ in $S$ with $m=x-y\in \Z^n\setminus\{0\}$.
+Write $x=\tfrac12 u$ and $y=\tfrac12 v$ with $u,v\in K$. Then
+\[
+m=x-y=\tfrac12(u-v)=\tfrac12(u+(-v)).
+\]
+Since $K=-K$, we have $-v\in K$, and since $K$ is convex, $\tfrac12(u+(-v))\in K$.
+Thus $m\in K\cap(\Z^n\setminus\{0\})$.
+\end{proof}
+
+\begin{lemma}\label{lem:pi_gt_3}
+$\pi>3$.
+\end{lemma}
+
+\begin{proof}
+In the unit circle, the regular inscribed hexagon has side length $1$ and perimeter $6$.
+Each circular arc subtending a side is longer than the corresponding chord, so the circumference $2\pi$ exceeds $6$.
+Thus $\pi>3$.
+\end{proof}
+
+\begin{lemma}[Volume of an ellipsoid]\label{lem:ellipsoidvol}
+Let $M$ be a symmetric positive definite $n\times n$ real matrix, and let
+\[
+E_M(t)=\{\mathbf{x}\in\R^n : \mathbf{x}^T M \mathbf{x}\le t\}\qquad(t>0).
+\]
+Then
+\[
+\vol\bigl(E_M(t)\bigr)=\vol(B_n(1))\frac{t^{n/2}}{\sqrt{\det(M)}},
+\]
+where $B_n(1)=\{\mathbf{y}\in\R^n:\|\mathbf{y}\|\le 1\}$.
+\end{lemma}
+
+\begin{proof}
+Choose an invertible $A$ with $M=A^T A$ (e.g.\ Cholesky). Then $\mathbf{x}^T M\mathbf{x}=\|A\mathbf{x}\|^2$ and
+$E_M(t)=A^{-1}(B_n(\sqrt{t}))$.
+By the change-of-variables formula,
+\[
+\vol\bigl(E_M(t)\bigr)=\frac{\vol(B_n(\sqrt{t}))}{|\det(A)|}
+=\frac{\vol(B_n(1))\,t^{n/2}}{\sqrt{\det(A^T A)}}
+=\vol(B_n(1))\frac{t^{n/2}}{\sqrt{\det(M)}}.
+\]
+\end{proof}
+
+\section{Two lattice lemmas}
+
+\begin{lemma}[A unimodular change of basis for a primitive vector]\label{lem:primitive_to_e1}
+Let $v\in \Z^3$ be \emph{primitive}, i.e.\ $\gcd(v_1,v_2,v_3)=1$. Then there exists $U\in \SL_3(\Z)$ such that $Uv=e_1$.
+Equivalently, there exists $A\in \SL_3(\Z)$ with $Ae_1=v$.
+\end{lemma}
+
+\begin{proof}
+Write $v=(a,b,c)^T$ and set $d=\gcd(a,b)$. Choose integers $x,y$ with $xa+yb=d$.
+Then the $2\times 2$ matrix
+\[
+P=\begin{pmatrix} x & y\\ -\frac{b}{d} & \frac{a}{d}\end{pmatrix}
+\in \SL_2(\Z)
+\]
+satisfies $P(a,b)^T=(d,0)^T$. Define $U_1=\mathrm{diag}(P,1)\in \SL_3(\Z)$, so
+\[
+U_1 v = (d,0,c)^T.
+\]
+Since $\gcd(d,c)=1$, choose integers $r,s$ with $rd+sc=1$. Then
+\[
+Q=\begin{pmatrix} r & s\\ -c & d\end{pmatrix}\in \SL_2(\Z)
+\]
+satisfies $Q(d,c)^T=(1,0)^T$. Define $U_2\in \SL_3(\Z)$ acting by $Q$ on coordinates $(1,3)$ and fixing the second coordinate:
+\[
+U_2=\begin{pmatrix}
+r & 0 & s\\
+0 & 1 & 0\\
+-c & 0 & d
+\end{pmatrix}.
+\]
+Then $U_2(d,0,c)^T=(1,0,0)^T=e_1$. Hence $U=U_2U_1\in\SL_3(\Z)$ satisfies $Uv=e_1$.
+Taking $A=U^{-1}$ gives $Ae_1=v$.
+\end{proof}
+
+\begin{lemma}[Shearing to remove a first row/column]\label{lem:shear}
+Let $M=\begin{pmatrix}1 & r^T\\ r & C\end{pmatrix}$ be a symmetric $3\times 3$ matrix with $r\in\Z^2$ and $C\in M_2(\Z)$.
+Let
+\[
+S=\begin{pmatrix}1 & -r^T\\ 0 & I_2\end{pmatrix}\in \SL_3(\Z).
+\]
+Then $S^T M S=\mathrm{diag}(1,\,C-r r^T)$.
+\end{lemma}
+
+\begin{proof}
+Let $e_1,e_2,e_3$ be the standard basis. For $j=2,3$ one has $Se_1=e_1$ and $Se_j=e_j-r_{j-1}e_1$.
+Thus
+\[
+(e_1)^T(S^T M S)e_j = (Se_1)^T M (Se_j) = e_1^T M (e_j-r_{j-1}e_1)= r_{j-1}-r_{j-1}\cdot 1=0.
+\]
+Hence $S^TMS$ has zero off-diagonal entries in the first row/column. The lower $2\times 2$ block equals
+\[
+(e_i-r_{i-1}e_1)^T M (e_j-r_{j-1}e_1)= C_{ij}-r_{i-1}r_{j-1}
+\qquad(i,j\in\{2,3\}),
+\]
+which is $C-r r^T$.
+\end{proof}
+
+\section{Classification in determinant $1$}
+
+\begin{lemma}[A unit vector in dimension $3$]\label{lem:unit3}
+Let $F(\mathbf{x})=\mathbf{x}^T M\mathbf{x}$ be a positive-definite integral ternary quadratic form with $\det(M)=1$.
+Then there exists $v\in\Z^3\setminus\{0\}$ with $F(v)=1$.
+\end{lemma}
+
+\begin{proof}
+Let $E=\{\mathbf{x}\in\R^3:\mathbf{x}^T M\mathbf{x}\le 16/9\}$. By Lemma~\ref{lem:ellipsoidvol},
+\[
+\vol(E)=\vol(B_3(1))\frac{(16/9)^{3/2}}{\sqrt{\det(M)}}=\frac{4\pi}{3}\left(\frac{16}{9}\right)^{3/2}
+=\frac{4\pi}{3}\left(\frac{4}{3}\right)^3=\frac{256\pi}{81}.
+\]
+By Lemma~\ref{lem:pi_gt_3}, $\vol(E)>\frac{256\cdot 3}{81}= \frac{256}{27}>8=2^3$.
+By Minkowski's theorem (Theorem~\ref{thm:minkowski}) there exists $v\in \Z^3\setminus\{0\}$ with $v\in E$, i.e.\ $F(v)\le 16/9$.
+Since $F(v)\in\Z$ and $16/9<2$, this forces $F(v)=1$.
+\end{proof}
+
+\begin{lemma}[A unit vector in dimension $2$]\label{lem:unit2}
+Let $Q(\mathbf{y})=\mathbf{y}^T B\mathbf{y}$ be a positive-definite integral binary quadratic form with $\det(B)=1$.
+Then there exists $u\in\Z^2\setminus\{0\}$ with $Q(u)=1$.
+\end{lemma}
+
+\begin{proof}
+Let $E=\{\mathbf{y}\in\R^2:\mathbf{y}^T B\mathbf{y}\le 16/9\}$. By Lemma~\ref{lem:ellipsoidvol},
+\[
+\vol(E)=\vol(B_2(1))\frac{16/9}{\sqrt{\det(B)}}=\pi\cdot \frac{16}{9}.
+\]
+By Lemma~\ref{lem:pi_gt_3}, $\vol(E)>\frac{16\cdot 3}{9}=\frac{16}{3}>4=2^2$.
+By Minkowski's theorem (Theorem~\ref{thm:minkowski}) there exists $u\in \Z^2\setminus\{0\}$ with $Q(u)\le 16/9$.
+Since $Q(u)\in\Z$ and $16/9<2$, it follows that $Q(u)=1$.
+\end{proof}
+
+\begin{theorem}\label{thm:unimodular_ternary}
+Every positive-definite integral ternary quadratic form $F$ with determinant $1$ is properly equivalent to
+$X^2+Y^2+Z^2$.
+\end{theorem}
+
+\begin{proof}
+Let $F(\mathbf{x})=\mathbf{x}^T M\mathbf{x}$ with $M\in M_3(\Z)$ symmetric, positive definite, and $\det(M)=1$.
+
+By Lemma~\ref{lem:unit3} choose $v\in\Z^3$ with $F(v)=1$. Then $v$ is primitive.
+By Lemma~\ref{lem:primitive_to_e1} choose $A_0\in \SL_3(\Z)$ with $A_0e_1=v$ and set
+\[
+M_0 = A_0^T M A_0.
+\]
+Then $(M_0)_{11}=e_1^T M_0 e_1 = v^T M v = F(v)=1$. Write
+\[
+M_0=\begin{pmatrix}1 & r^T\\ r & C\end{pmatrix}
+\quad\text{with } r\in\Z^2,\ C\in M_2(\Z)\text{ symmetric}.
+\]
+Let $S_1\in\SL_3(\Z)$ be the shear from Lemma~\ref{lem:shear}. Then
+\[
+M_1 := S_1^T M_0 S_1 = \mathrm{diag}(1,\,B),\qquad B:=C-r r^T\in M_2(\Z)\text{ symmetric}.
+\]
+Since $\det(M_1)=\det(M_0)=\det(M)=1$, we have $\det(B)=1$, and $B$ is positive definite.
+
+By Lemma~\ref{lem:unit2} there exists $u\in\Z^2$ with $u^TBu=1$.
+Choose $A_2\in \SL_2(\Z)$ with $A_2 e_1=u$ (by the $2$-dimensional version of Lemma~\ref{lem:primitive_to_e1}),
+and set $\widetilde{A}_2=\mathrm{diag}(1,A_2)\in \SL_3(\Z)$. Then
+\[
+M_2 := \widetilde{A}_2^T M_1 \widetilde{A}_2 = \mathrm{diag}(1,\,B_2),
+\qquad B_2:=A_2^T B A_2,
+\]
+and $(B_2)_{11}=u^T B u=1$. Write
+\[
+B_2=\begin{pmatrix}1 & s\\ s & t\end{pmatrix}\qquad(s,t\in\Z).
+\]
+Let $S_2=\begin{pmatrix}1 & -s\\ 0 & 1\end{pmatrix}\in \SL_2(\Z)$ and $\widetilde{S}_2=\mathrm{diag}(1,S_2)\in\SL_3(\Z)$.
+A direct calculation (the $2\times 2$ analogue of Lemma~\ref{lem:shear}) gives
+\[
+S_2^T B_2 S_2 = \begin{pmatrix}1 & 0\\ 0 & t-s^2\end{pmatrix}.
+\]
+Thus
+\[
+M_3 := \widetilde{S}_2^T M_2 \widetilde{S}_2 = \mathrm{diag}\bigl(1,1,t-s^2\bigr).
+\]
+Taking determinants yields $1=\det(M_3)=t-s^2$, so $M_3=I_3$.
+
+Therefore
+\[
+I_3 = M_3 = (A_0 S_1 \widetilde{A}_2 \widetilde{S}_2)^T\, M\, (A_0 S_1 \widetilde{A}_2 \widetilde{S}_2),
+\]
+and the product $A_0 S_1 \widetilde{A}_2 \widetilde{S}_2$ lies in $\SL_3(\Z)$.
+Hence $F$ is properly equivalent to $X^2+Y^2+Z^2$.
+\end{proof}
+
+\end{document}
